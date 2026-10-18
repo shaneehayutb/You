@@ -433,3 +433,8 @@ label.btn { cursor: pointer; }
 .rv-legend i.rv-net { background: var(--rose); } .rv-legend i.rv-rent { background: var(--sand); } .rv-legend i.rv-loss { background: #D9A3A0; }
 .pay-frame { width: 100%; height: 70dvh; border: 0; border-radius: 16px; background: #fff; display: block; }
 .legal-frame { width: 100%; height: 78dvh; border: 0; border-radius: 16px; background: var(--cream); display: block; }
+
+/* רשימת משימות */
+.task .task-check { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--rose-deep, #b07068); background: transparent; color: #fff; font-size: 14px; line-height: 1; flex: none; margin-inline-end: 10px; }
+.task.done .task-check { background: var(--rose-deep, #b07068); }
+.task.done .grow { text-decoration: line-through; opacity: .55; }

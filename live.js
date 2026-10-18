@@ -281,6 +281,15 @@ const API = {
     return call(sb.from('class_series').insert({ title, dow, start_time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, duration_min: dur, capacity: cap }));
   },
   addClass({ title, start, dur, cap }) { return call(sb.from('classes').insert({ title, starts_at: new Date(start).toISOString(), duration_min: dur, capacity: cap })); },
+  /* ---- רשימת משימות (רק שחר) ---- */
+  async tasksLoad() {
+    const rows = await call(sb.from('admin_tasks').select('*').order('created_at', { ascending: true }));
+    return rows.map(t => ({ id: t.id, title: t.title, done: t.done }));
+  },
+  taskAdd(title) { return call(sb.from('admin_tasks').insert({ title })); },
+  taskToggle(id, done) { return call(sb.from('admin_tasks').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', id)); },
+  taskDel(id) { return call(sb.from('admin_tasks').delete().eq('id', id)); },
+
   saveSongs(classId, songs) {
     const first = songs[0];
     return call(sb.from('classes').update({ songs, song_title: first?.title || null, song_artist: first?.artist || null, song_url: first?.url || null }).eq('id', classId));

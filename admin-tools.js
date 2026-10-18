@@ -342,8 +342,36 @@ const NOTIFY = [
   ['cancelled', 'מישהי ביטלה הרשמה'],
   ['newClient', 'לקוחה חדשה הצטרפה'],
   ['cardEnding', 'כרטיסייה של לקוחה נגמרת'],
+  ['songs', 'תזכורת להעלות שירים (4 שעות אחרי שיעור)'],
 ];
-const notifyPrefs = () => ({ booked: true, cancelled: true, newClient: true, cardEnding: false, ...(S.adminNotify || {}) });
+const notifyPrefs = () => ({ booked: true, cancelled: true, newClient: true, cardEnding: false, songs: false, ...(S.adminNotify || {}) });
+
+/* ---------- רשימת משימות (במסך הניהול) ---------- */
+function tasksEnsureLoaded() {
+  if (!LIVE) { S.tasks = S.tasks || []; return; }
+  if (!S.tasks && !S._tasksLoading) {
+    S._tasksLoading = true;
+    API.tasksLoad().then(t => { S.tasks = t; }).catch(e => toast(errHe(e))).finally(() => { S._tasksLoading = false; render(); });
+  }
+}
+function tasksBlock() {
+  tasksEnsureLoaded();
+  const t = S.tasks || [], open = t.filter(x => !x.done), done = t.filter(x => x.done);
+  const row = x => `<div class="list-row task ${x.done ? 'done' : ''}">
+      <button class="task-check" data-act="adTaskToggle" data-id="${x.id}" aria-label="${x.done ? 'החזרה לרשימה' : 'בוצע'}">${x.done ? '✓' : ''}</button>
+      <span class="grow">${esc(x.title)}</span>
+      <button class="btn sm ghost" data-act="adTaskDel" data-id="${x.id}" aria-label="מחיקה">✕</button></div>`;
+  return `<div class="section-title"><h2>משימות</h2></div>
+    <div class="card" style="padding:4px 18px">
+      ${LIVE && !S.tasks ? '<p class="muted small" style="padding:12px 0">טוען…</p>' : (open.map(row).join('') || '<p class="muted small" style="padding:12px 0">אין משימות פתוחות 🤍</p>')}
+      <div class="row" style="padding:10px 0"><input class="input grow" id="task-new" placeholder="משימה חדשה" maxlength="300">
+        <button class="btn sm" data-act="adTaskAdd">הוספה</button></div>
+      ${done.length ? `<details><summary class="tiny muted" style="padding:6px 0">בוצעו (${done.length})</summary>${done.map(row).join('')}</details>` : ''}
+    </div>`;
+}
+async function tasksDo(fn) {
+  try { await fn(); S.tasks = await API.tasksLoad(); render(); } catch (e) { toast(errHe(e)); }
+}
 
 function vAdminProfile() {
   const d = { ...CONFIG.directions, ...(S.directions || {}) };
@@ -415,7 +443,7 @@ function vAdminProfile() {
       ${NOTIFY.map(([k, label]) => `<div class="list-row"><span class="grow">${label}</span>
         <button class="switch ${np[k] ? 'on' : ''}" data-act="adNotify" data-k="${k}" aria-label="${label}"></button></div>`).join('')}
     </div>
-    <p class="tiny muted" style="margin:8px 4px 0">ההתראות יתחילו להגיע לטלפון אחרי שנחבר התראות (push).</p>
+    <p class="tiny muted" style="margin:8px 4px 0">כרגע נשלחת לטלפון התזכורת לשירים. השאר יגיעו בהמשך.</p>
 
     <div class="section-title"><h2>עוד</h2></div>
     <div class="card" style="padding:4px 18px;margin:0">
@@ -723,10 +751,32 @@ document.addEventListener('click', e => {
       return openSheet({ type: 'firstClass', id: c.id, preview: true });
     }
     case 'adNotify': {
-      const k = el.dataset.k, np = { ...notifyPrefs(), [k]: !notifyPrefs()[k] };
-      S.adminNotify = np; save(); render();
-      if (LIVE) API.saveSettings({ admin_notify: np }).catch(err => toast(errHe(err)));
-      return;
+      const k = el.dataset.k, on = !notifyPrefs()[k], np = { ...notifyPrefs(), [k]: on };
+      return (async () => {
+        // התראה לטלפון של שחר: צריך אישור התראות באייפון
+        if (LIVE && on && k === 'songs' && !(await API.enablePush(true))) {
+          return toast(IS_NATIVE ? 'כדי לקבל התראות צריך לאשר אותן בהגדרות האייפון ← YOU ← הודעות' : 'התראות לטלפון מגיעות רק באפליקציה באייפון');
+        }
+        S.adminNotify = np; save(); render();
+        if (LIVE) API.saveSettings({ admin_notify: np }).catch(err => toast(errHe(err)));
+      })();
+    }
+    case 'adTaskAdd': {
+      const title = (document.getElementById('task-new')?.value || '').trim();
+      if (!title) return toast('מה המשימה?');
+      if (!LIVE) { S.tasks.push({ id: uid(), title, done: false }); save(); return render(); }
+      return tasksDo(() => API.taskAdd(title));
+    }
+    case 'adTaskToggle': {
+      const t = (S.tasks || []).find(x => x.id === id); if (!t) return;
+      if (!LIVE) { t.done = !t.done; save(); return render(); }
+      t.done = !t.done; render();
+      return tasksDo(() => API.taskToggle(id, t.done));
+    }
+    case 'adTaskDel': {
+      if (!LIVE) { S.tasks = S.tasks.filter(x => x.id !== id); save(); return render(); }
+      S.tasks = S.tasks.filter(x => x.id !== id); render();
+      return tasksDo(() => API.taskDel(id));
     }
     case 'adViewClient': S.admin = false; save(); toast('תצוגת לקוחה · כדי לחזור: פרופיל ← מצב ניהול'); return go({ tab: 'home' });
     case 'adSaveRate': {
@@ -770,3 +820,8 @@ function applyProducts(list) {
   }
 }
 if (!LIVE && S.productsOverride) applyProducts(S.productsOverride);
+
+// Enter בשדה משימה חדשה = הוספה
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target?.id === 'task-new') { e.preventDefault(); document.querySelector('[data-act="adTaskAdd"]')?.click(); }
+});

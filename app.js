@@ -1038,6 +1038,8 @@ function vAdmin() {
       <button class="card center rv-tile" data-act="adRevenue"><p class="muted small">הכנסות החודש ‹</p><h2>${typeof monthRevenue === 'function' ? monthRevenue() : 0}₪</h2></button>
     </div>
 
+    ${typeof tasksBlock === 'function' ? tasksBlock() : ''}
+
     <div class="section-title"><h2>שיעורים קרובים</h2><a href="#" data-act="newClass">+ שיעור חדש</a></div>
     ${upcoming.map(c => {
       const taken = c.cap - spotsLeft(c);
