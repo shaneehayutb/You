@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>פרטיות ותמיכה · YOU</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Playpen+Sans+Hebrew:wght@500&display=swap">
+<style>
+/* Layout: one narrow reading column, three documents behind a tab switch */
+:root {
+  --bg: #FBF5EE; --surface: #FFFFFF; --fg: #3A2A2F; --muted: #7A6468;
+  --accent: #C4705F; --soft: #F7DCD2; --line: #EADBD2; --draft: #FFF1C9;
+  --display: "Playpen Sans Hebrew", "Assistant", system-ui, sans-serif;
+  --body: "Assistant", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #221A1C; --surface: #2C2225; --fg: #F3E7E2; --muted: #BBA6A8;
+  --accent: #E39684; --soft: #3A2B2E; --line: #46363A; --draft: #4A3F22; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #221A1C; --surface: #2C2225; --fg: #F3E7E2; --muted: #BBA6A8;
+  --accent: #E39684; --soft: #3A2B2E; --line: #46363A; --draft: #4A3F22; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.7; }
+.wrap { max-width: 42rem; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; direction: rtl; }
+h1, h2 { font-family: var(--display); font-weight: 500; text-wrap: balance; line-height: 1.3; }
+h1 { font-size: 1.9rem; margin: 0 0 4px; }
+h2 { font-size: 1.25rem; margin: 32px 0 6px; color: var(--accent); }
+h3 { font-size: 1.02rem; margin: 18px 0 4px; }
+p, li { max-width: 65ch; }
+ul, ol { padding-inline-start: 1.2em; margin: 6px 0; display: grid; gap: 4px; }
+.sub { color: var(--muted); margin: 0 0 20px; font-size: .95rem; }
+.note { background: var(--draft); border-radius: 10px; padding: 12px 16px; font-size: .92rem; margin-bottom: 20px; }
+.note ul { margin-top: 6px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.tabs button { font: 600 1rem var(--body); padding: 8px 18px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ph { background: var(--soft); border-radius: 6px; padding: 0 6px; font-weight: 600; }
+.law { color: var(--muted); font-size: .85rem; }
+.faq { display: grid; gap: 10px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+summary { font-weight: 600; cursor: pointer; }
+.wa { display: inline-block; margin-top: 6px; font-weight: 700; font-size: 1.15rem; color: var(--accent); user-select: all; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; margin: 8px 0; }
+th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+.embedded .note, .embedded .draft-only { display: none; }
+body { margin: 0; }
+</style>
+</head><body>
+
+<div class="wrap">
+  <div class="note"><b>טיוטה מבוססת חוק ישראלי, לבדיקת עורך דין לפני פרסום.</b> נכתבה לפי חוק הגנת הפרטיות (כולל תיקון 13, בתוקף מאוגוסט 2025), תקנות אבטחת מידע, חוק הגנת הצרכן, חוק התקשורת (סעיף 30א), תקנות מכוני כושר והצהרת בריאות, ודרישות Apple. זה לא ייעוץ משפטי.
+    <ul>
+      <li>מה שמסומן <span class="ph">כך</span> צריך להשלים.</li>
+      <li>לעורך הדין במיוחד: מדיניות הביטולים מול סעיף 14ג לחוק הגנת הצרכן, ונוסח הצהרת הבריאות.</li>
+    </ul>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button id="t-privacy" role="tab" aria-selected="true" aria-controls="privacy">מדיניות פרטיות</button>
+    <button id="t-cancel" role="tab" aria-selected="false" aria-controls="cancel">ביטולים והחזרים</button>
+    <button id="t-support" role="tab" aria-selected="false" aria-controls="support">תמיכה</button>
+  </div>
+
+  <!-- ===================== פרטיות ===================== -->
+  <section id="privacy" role="tabpanel" aria-labelledby="t-privacy">
+    <h1>מדיניות פרטיות</h1>
+    <p class="sub">אפליקציית YOU by Shahar · עודכן לאחרונה: 15.10.2026</p>
+
+    <p>המסמך מסביר איזה מידע אישי נאסף באפליקציה, למה, מי רואה אותו, כמה זמן הוא נשמר, ומה הזכויות שלך. הוא נכתב לפי חוק הגנת הפרטיות, התשמ"א-1981, והתקנות שלו. המסמך מנוסח בלשון נקבה, ומתייחס לכל המשתמשים.</p>
+
+    <h2>1. מי אחראית על המידע</h2>
+    <p>האחראית על המידע (בעלת מאגר המידע) היא <b>שני חיות</b>, בעלת העסק <b>שאיין</b> (סטודיו YOU by Shahar), עוסק מס׳ 212291546, כתובת העסק: בר יהודה 17, בת ים. לכל פנייה בנושא פרטיות: וואטסאפ <span dir="ltr">054-554-3035</span> או מייל <span dir="ltr">shaneehayutb@gmail.com</span>.</p>
+
+    <h2>2. איזה מידע נאסף ולמה</h2>
+    <div class="table-wrap"><table>
+      <tr><th>מידע</th><th>למה הוא נחוץ</th><th>חובה?</th></tr>
+      <tr><td>שם, גיל, טלפון ומייל (המייל מגיע מ-Apple או Google)</td><td>ניהול החשבון, ההרשמות והכרטיסיות, ויצירת קשר בנוגע לשיעורים</td><td>כן. בלי זה אי אפשר להירשם לשיעורים</td></tr>
+      <tr><td>הצהרת בריאות, ואישור רפואי אם נדרש</td><td>חובה לפי תקנות מכוני כושר (הצהרת בריאות ותעודה רפואית). נועד לבטיחותך ולהתאמת השיעור</td><td>כן, לפי החוק. בלי הצהרה אי אפשר להשתתף</td></tr>
+      <tr><td>שם הורה מאשר (מתחת לגיל 18)</td><td>הסכמת הורה להשתתפות</td><td>כן, לקטינות</td></tr>
+      <tr><td>תשובות לשאלות היכרות (רקדת בעבר, מה מושך אותך, איך הגעת)</td><td>להכיר אותך ולהתאים את השיעור</td><td>לא. אפשר לדלג</td></tr>
+      <tr><td>הרשמות, נוכחות, ביטולים, כרטיסיות ורכישות</td><td>ניהול השיעורים והכרטיסייה, ותיעוד חשבונאי</td><td>נוצר אוטומטית בשימוש</td></tr>
+      <tr><td>מזהה מכשיר להתראות (אם אישרת)</td><td>תזכורות לפני שיעור והודעות על ביטולים</td><td>לא. אפשר לכבות בכל רגע</td></tr>
+    </table></div>
+    <p><b>מידע רפואי</b> הוא "מידע בעל רגישות מיוחדת" לפי החוק. הוא נשמר בהגנה מוגברת, ורק שחר יכולה לראות אותו.</p>
+
+    <h3>מה לא נאסף</h3>
+    <ul>
+      <li><b>פרטי כרטיס אשראי:</b> התשלום נעשה בטופס מאובטח של חברת הסליקה תקבול, ומספרי הכרטיס לא מגיעים אלינו.</li>
+      <li><b>סרטונים מהשיעורים:</b> נשמרים רק בטלפון שלך, ולא עולים לשום שרת.</li>
+      <li><b>מיקום, אנשי קשר ותמונות</b> (מלבד אישור רפואי שבחרת להעלות).</li>
+      <li>אין פרסומות, ואין מעקב או פרופיילינג לצורכי שיווק.</li>
+    </ul>
+
+    <h2>3. מי רואה את המידע</h2>
+    <ul>
+      <li><b>שחר בלבד</b> רואה את המידע שלך, כולל הצהרת הבריאות. לקוחות אחרות לא רואות שום פרט עלייך.</li>
+      <li><b>ספקי שירות</b> שמפעילים את האפליקציה, ורק לצורך זה:
+        <ul>
+          <li><b>Supabase</b>: אחסון הנתונים, על שרתים באיחוד האירופי (פרנקפורט, גרמניה).</li>
+          <li><b>Apple ו-Google</b>: ההתחברות לחשבון, והתראות.</li>
+          <li><b>תקבול</b>: סליקת התשלומים.</li>
+        </ul>
+      </li>
+      <li>לא מוכרים ולא מעבירים מידע לאף גורם אחר, אלא אם החוק מחייב זאת.</li>
+    </ul>
+    <p class="law">העברת המידע לשרתים באיחוד האירופי נעשית לפי תקנות הגנת הפרטיות (העברת מידע למאגרי מידע שמחוץ לגבולות המדינה), התשס"א-2001, שמתירות העברה למדינות האיחוד.</p>
+
+    <h2>4. כמה זמן המידע נשמר</h2>
+    <ul>
+      <li><b>פרטי החשבון:</b> כל עוד החשבון פעיל.</li>
+      <li><b>הצהרת בריאות:</b> בתוקף לשנתיים, ואז מתחדשת. הצהרה ישנה נשמרת <span class="ph">7 שנים</span> לתיעוד, כפי שנהוג בתחום. <span class="draft-only">לבדוק מול עורך הדין.</span></li>
+      <li><b>רכישות ותשלומים:</b> 7 שנים, כפי שמחייבים דיני המס.</li>
+      <li><b>כשמוחקים חשבון:</b> כל השאר נמחק תוך 30 יום.</li>
+    </ul>
+
+    <h2>5. אבטחת המידע</h2>
+    <p>המידע מאובטח לפי תקנות הגנת הפרטיות (אבטחת מידע), התשע"ז-2017: חיבור מוצפן, הרשאות גישה לפי משתמשת (כל לקוחה רואה רק את המידע שלה), אחסון מוגן של מסמכים רפואיים, וגיבויים. אם יקרה אירוע אבטחה חמור, נודיע לרשות להגנת הפרטיות, ולך אם זה נדרש.</p>
+
+    <h2>6. הזכויות שלך</h2>
+    <ul>
+      <li><b>לעיין</b> במידע שנשמר עלייך.</li>
+      <li><b>לתקן</b> מידע שגוי. את רוב הפרטים אפשר לתקן לבד, ב"הפרופיל שלי".</li>
+      <li><b>למחוק את החשבון</b> מתוך האפליקציה: פרופיל ← מחיקת חשבון. אפשר גם לבקש בוואטסאפ.</li>
+      <li><b>לבטל הסכמה להתראות</b> בכל רגע.</li>
+    </ul>
+    <p>נענה לכל בקשה תוך 30 יום לכל היותר. אם לא נענית, אפשר לפנות ל<b>רשות להגנת הפרטיות</b> במשרד המשפטים.</p>
+
+    <h2>7. הודעות ושיווק</h2>
+    <p>האפליקציה שולחת רק <b>הודעות שירות</b>: אישור הרשמה, תזכורות, ביטולים ושינויים. <b>הודעות שיווקיות</b>, כמו מבצעים וסדנאות, יישלחו רק אם אישרת זאת במפורש, ותמיד אפשר להסיר את עצמך. כך מחייב חוק התקשורת, סעיף 30א.</p>
+
+    <h2>8. קטינות</h2>
+    <p>מתחת לגיל 18 נדרשת הסכמת הורה לפני הרשמה לשיעור. האפליקציה לא מיועדת לילדות מתחת לגיל 14.</p>
+
+    <h2>9. צילומים בשיעורים</h2>
+    <p>לפעמים מצולמים קטעים מהשיעורים, לשיתוף ברשתות החברתיות, באתר ובפרסום של הסטודיו. בהרשמה כל לקוחה בוחרת בעצמה: <b>אפשר לצלם ולשתף</b>, או <b>לא להצטלם</b>. שום אפשרות לא מסומנת מראש, והבחירה לא משפיעה על ההשתתפות בשיעורים.</p>
+    <ul>
+      <li>הבחירה נשמרת בחשבון, ושחר רואה אותה ברשימת המשתתפות בכל שיעור, כדי להקפיד עליה בזמן הצילום.</li>
+      <li>אם אישרת, הסרטונים יכולים להיות ערוכים (חיתוך, מוזיקה, טקסט) ולהתפרסם בערוצים של הסטודיו, בלי תמורה.</li>
+      <li>אפשר לשנות את הבחירה בכל רגע בפרופיל. מהרגע ששינית, לא נצלם או נשתף אותך בניגוד לבחירה החדשה. פרסום קיים שבו רואים אותך יוסר תוך 14 יום מבקשה בוואטסאפ או במייל. סטוריז נמחקים לבד אחרי 24 שעות.</li>
+      <li>מתחת לגיל 18, הבחירה נעשית יחד עם ההורה שאישר/ה את ההשתתפות.</li>
+      <li>הבחירה חלה על צילומים של הסטודיו. סרטונים ותמונות שמשתתפות מצלמות בעצמן, והפרסום שלהם, הם באחריותן בלבד.</li>
+      <li class="law">לפי חוק הגנת הפרטיות (סעיף 2), שימוש מסחרי בתמונה של אדם מחייב את הסכמתו.</li>
+    </ul>
+
+    <h2>10. שינויים במדיניות</h2>
+    <p>אם נשנה את המדיניות, נעדכן את התאריך בראש העמוד. על שינוי מהותי נודיע באפליקציה לפני שהוא נכנס לתוקף.</p>
+  </section>
+
+  <!-- ===================== ביטולים ===================== -->
+  <section id="cancel" role="tabpanel" aria-labelledby="t-cancel" hidden>
+    <h1>ביטולים והחזרים</h1>
+    <p class="sub">YOU by Shahar · עודכן לאחרונה: 15.10.2026</p>
+
+    <div class="note">שחר ביקשה "אין ביטול ואין החזר". לפי <b>סעיף 14ג לחוק הגנת הצרכן</b>, כנראה שבעסקה מרחוק, כמו רכישה באפליקציה, <b>אי אפשר לשלול לגמרי</b> את זכות הביטול בתוך 14 יום. לכן הנוסח כאן <b>מגביל את ההחזר ככל שהחוק מאפשר</b>. לבדוק מול עורך הדין.</div>
+
+    <h2>ביטול רכישה של כרטיסייה או שיעור</h2>
+    <ul>
+      <li><b>תוך 14 יום מהרכישה, ולפני שהשתמשת בשיעור כלשהו מהכרטיסייה:</b> אפשר לבטל ולקבל החזר, בניכוי דמי ביטול של 5% מהמחיר או 100 ₪, הנמוך מביניהם.</li>
+      <li><b>אחרי שהשתמשת בשיעור אחד או יותר, או אחרי 14 יום:</b> אין החזר כספי. השיעורים שנשארו בכרטיסייה זמינים לך עד סוף התוקף שלה.</li>
+      <li>ההחזר נעשה לאותו אמצעי תשלום, תוך 14 יום מהבקשה.</li>
+      <li>אין הקפאה של כרטיסיות.</li>
+      <li class="law">ללקוחות עם מוגבלות, אזרחיות ותיקות (מעל 65) ועולות חדשות, החוק מאפשר במקרים מסוימים לבטל עד 4 חודשים מהרכישה. <span class="draft-only">לבדוק מול עורך הדין אם זה חל על העסק.</span></li>
+    </ul>
+    <p>איך מבטלים: כותבים לשחר בוואטסאפ <span dir="ltr">054-554-3035</span>, עם שם מלא ותאריך הרכישה.</p>
+
+    <h2>ביטול הרשמה לשיעור</h2>
+    <ul>
+      <li><b>12 שעות או יותר לפני השיעור:</b> השיעור חוזר לכרטיסייה (ולא כהחזר כספי).</li>
+      <li><b>פחות מ-12 שעות לפני השיעור, אי-הגעה או איחור:</b> השיעור נספר מהכרטיסייה.</li>
+      <li><b>אם שחר מבטלת שיעור:</b> הוא חוזר לכרטיסייה של כל הנרשמות, וכולן מקבלות הודעה.</li>
+    </ul>
+
+    <h2>תוקף</h2>
+    <p>שיעור בודד: 21 יום. כרטיסיית 5: חודשיים. כרטיסיית 10: ארבעה חודשים. הכרטיסייה אישית ולא ניתנת להעברה.</p>
+
+    <h2>פרטי העסק</h2>
+    <p>שאיין · שני חיות · סטודיו YOU by Shahar · עוסק מס׳ 212291546 · בר יהודה 17, בת ים · וואטסאפ <span dir="ltr">054-554-3035</span></p>
+    <p class="law">חוק הגנת הצרכן מחייב להציג את פרטי העסק בעסקה מרחוק.</p>
+  </section>
+
+  <!-- ===================== תמיכה ===================== -->
+  <section id="support" role="tabpanel" aria-labelledby="t-support" hidden>
+    <h1>תמיכה</h1>
+    <p class="sub">שאלה, בעיה באפליקציה, או סתם משהו שרצית להגיד?</p>
+
+    <p>כתבי לשחר בוואטסאפ:</p>
+    <span class="wa" dir="ltr">054-554-3035</span>
+    <p class="sub">בדרך כלל עונה תוך יום. אפשר גם במייל: <span dir="ltr">shaneehayutb@gmail.com</span></p>
+
+    <h2>שאלות נפוצות</h2>
+    <div class="faq">
+      <details><summary>איך מבטלים הרשמה לשיעור?</summary>
+        <p>בלשונית "השיעורים שלי" לוחצים על השיעור ואז על "ביטול". אם ביטלת 12 שעות או יותר לפני השיעור, הוא חוזר לכרטיסייה. ביטול מאוחר יותר נספר כשיעור.</p></details>
+      <details><summary>מה קורה אם שחר מבטלת שיעור?</summary>
+        <p>השיעור חוזר לכרטיסייה של כל הנרשמות, ותקבלי הודעה באפליקציה.</p></details>
+      <details><summary>כמה זמן הכרטיסייה בתוקף?</summary>
+        <p>שיעור בודד: 21 יום. כרטיסיית 5: חודשיים. כרטיסיית 10: ארבעה חודשים.</p></details>
+      <details><summary>אפשר לבטל כרטיסייה ולקבל החזר?</summary>
+        <p>תוך 14 יום מהרכישה, ולפני שהשתמשת בשיעור, אפשר לבטל ולקבל החזר בניכוי דמי ביטול (5% או 100 ₪, הנמוך מביניהם). אחרי זה אין החזר. הפרטים המלאים בלשונית "ביטולים והחזרים".</p></details>
+      <details><summary>למה צריך למלא הצהרת בריאות?</summary>
+        <p>החוק מחייב הצהרת בריאות לפני פעילות גופנית מאורגנת. אם סימנת "כן" באחת השאלות, צריך להעלות אישור רפואי לפני השיעור הראשון. ההצהרה מתחדשת כל שנתיים.</p></details>
+      <details><summary>מי רואה את המידע שלי?</summary>
+        <p>רק שחר. לקוחות אחרות לא רואות שום פרט עלייך. הפרטים המלאים במדיניות הפרטיות.</p></details>
+      <details><summary>איפה נשמרים הסרטונים שלי?</summary>
+        <p>רק בטלפון שלך. הם לא עולים לשום מקום, ואף אחד אחר לא רואה אותם.</p></details>
+      <details><summary>איך מוחקים את החשבון?</summary>
+        <p>באפליקציה: פרופיל ← מחיקת חשבון. אפשר גם לכתוב לשחר בוואטסאפ. המידע נמחק תוך 30 יום, חוץ ממה שהחוק מחייב לשמור (רישומי תשלום).</p></details>
+    </div>
+
+    <h2>נגישות</h2>
+    <p>אנחנו רוצות שהאפליקציה תתאים לכל אחת. אם משהו לא נגיש לך, כתבי לנו בוואטסאפ, ונעזור לך להירשם ולקבל את כל המידע בדרך אחרת.</p>
+  </section>
+</div>
+
+<script>
+const tabs = document.querySelectorAll('[role="tab"]');
+tabs.forEach(t => t.addEventListener('click', () => {
+  tabs.forEach(o => {
+    const on = o === t;
+    o.setAttribute('aria-selected', on);
+    document.getElementById(o.getAttribute('aria-controls')).hidden = !on;
+  });
+}));
+if (window !== window.top) document.documentElement.classList.add('embedded');
+const want = (location.hash || '').slice(1);
+const tab = want && document.querySelector(`[aria-controls="${want}"]`);
+if (tab) tab.click();
+</script></body></html>
