@@ -257,7 +257,6 @@ const API = {
   /* ---- פעולות לקוחה ---- */
   book(classId) { return call(sb.rpc('book_class', { p_class: classId })); },
   cancel(bookingId) { return call(sb.rpc('cancel_booking', { p_booking: bookingId })); },
-  testPurchase(productId) { return call(sb.rpc('test_purchase', { p_product: productId })); },
   // תקבול: יוצרים הזמנה בשרת ומקבלים קישור לטופס האשראי (נפתח בתוך האפליקציה)
   async payCreate(productId) {
     const { data: r, error } = await sb.functions.invoke('takbull', { body: { action: 'create', productId } });
