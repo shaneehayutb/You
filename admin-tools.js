@@ -303,11 +303,12 @@ function shStudent({ id }) {
     </div>
 
     <h3>צילומים</h3>
-    <div class="card" style="margin:0"><div class="tags">${photoBadge(s.photo) || '<span class="tag green">📷 מאשרת צילום ושיתוף</span>'}</div></div>
+    <div class="card" style="margin:0"><div class="tags">${photoBadge(s.photo) || '<span class="tag green">📷 מאשרת צילום ושיתוף</span>'}</div>
+      ${LIVE && !s.termsAt ? '<p class="tiny muted" style="margin-top:6px">עוד לא סיימה את ההרשמה (לא אישרה תקנון)</p>' : ''}</div>
 
     <h3>בריאות</h3>
     <div class="card" style="margin:0">${h ? `<div class="tags">${healthBadges(h) || '<span class="tag green">ללא הערות</span>'}</div>
-      <p class="tiny muted" style="margin-top:6px">הצהרה בתוקף עד ${fmtDate(h.validUntil)}${h.cert ? ' · אישור רפואי התקבל' : ''}</p>` : '<span class="tag warn">עוד לא מילאה הצהרת בריאות</span>'}</div>
+      <p class="tiny muted" style="margin-top:6px">הצהרה בתוקף עד ${fmtDate(h.validUntil)}.${String(new Date(h.validUntil).getFullYear()).slice(2)}${h.cert ? ' · אישור רפואי התקבל' : ''}</p>` : '<span class="tag warn">עוד לא מילאה הצהרת בריאות</span>'}</div>
 
     <h3>כרטיסיות</h3>
     ${s.purchases.length ? [...s.purchases].sort((a, b) => b.at - a.at).map(p => {

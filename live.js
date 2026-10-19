@@ -332,7 +332,7 @@ const API = {
       const h = hs.find(x => x.user_id === p.id);
       const mine = books.filter(b => b.user_id === p.id && b.classes && ts(b.classes.starts_at) < Date.now());
       return {
-        id: p.id, name: p.full_name || '—', phone: p.phone || '', photo: p.photo_consent || null, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
+        id: p.id, name: p.full_name || '—', phone: p.phone || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
         attended: mine.filter(b => b.status === 'attended').length || mine.length,
         lastAt: Math.max(0, ...mine.map(b => ts(b.classes.starts_at))) || null,
         health: h ? { dance: h.dance, needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
