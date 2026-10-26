@@ -58,6 +58,10 @@ const ERR_HE = {
   already_booked: 'כבר נרשמת לשיעור הזה',
   class_full: 'השיעור הזה כבר מלא',
   no_credits: 'אין לך שיעורים בכרטיסייה',
+  client_no_credits: 'אין לה שיעורים בכרטיסייה לשיעור הזה. קודם מוסיפים לה שיעור ידנית',
+  client_health_missing: 'היא עוד לא מילאה הצהרת בריאות (או חסר אישור רפואי)',
+  client_already_booked: 'היא כבר רשומה לשיעור הזה',
+  bad_input: 'בדקי את הפרטים',
   booking_not_found: 'ההרשמה לא נמצאה',
   class_started: 'השיעור כבר התחיל',
   not_admin: 'רק שחר יכולה לעשות את זה',
@@ -348,7 +352,9 @@ const API = {
     return call(sb.rpc('admin_edit_class', { p_class: classId, p_title: title, p_note: note || '', p_starts_at: new Date(start).toISOString(), p_capacity: cap, p_all: !!all }));
   },
   broadcast(title, body) { return call(sb.rpc('admin_broadcast', { p_title: title, p_body: body })); },
-  grantCredits(userId, credits, days, note) { return call(sb.rpc('admin_grant_credits', { p_user: userId, p_credits: credits, p_days: days, p_note: note || null })); },
+  grantCredits(userId, credits, days, note, price = 0) { return call(sb.rpc('admin_grant_credits', { p_user: userId, p_credits: credits, p_days: days, p_note: note || null, p_price: price || 0 })); },
+  adjustRemaining(purchaseId, delta) { return call(sb.rpc('admin_adjust_remaining', { p_purchase: purchaseId, p_delta: delta })); },
+  bookFor(userId, classId) { return call(sb.rpc('admin_book_for', { p_user: userId, p_class: classId })); },
   // זיכוי דרך תקבול (השרת בודק שזו שחר, מבצע בתקבול ורק אז רושם)
   async refund(purchaseId, amount) {
     const { data, error } = await sb.functions.invoke('takbull', { body: { action: 'refund', purchaseId, amount } });

@@ -215,6 +215,18 @@ function shAdminClass2({ id }) {
       </div>`).join('') || '<p class="muted small" style="padding:12px 0">עוד אין רשומות</p>'}
     </div>
 
+    ${!c.cancelled && c.start > now() - 7 * DAY ? (() => {
+      adminEnsureLoaded();
+      const inIds = new Set(roster.map(r => r.id));
+      const opts = students().filter(x => !x.blocked && !inIds.has(x.id)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+      return opts.length ? `<details class="card" style="margin:0;padding:10px 14px"><summary class="small"><b>+ רישום לקוחה לשיעור</b></summary>
+        <p class="tiny muted" style="margin:6px 0">יורד לה שיעור מהכרטיסייה${c.start > now() ? ', והיא מקבלת הודעה' : ''}. אם אין לה שיעורים, קודם מוסיפים ידנית בכרטיס שלה.</p>
+        <select class="input" id="bf-user"><option value="">בחירת לקוחה</option>${opts.map(x => {
+          const left = x.purchases.filter(p => p.remaining > 0 && p.expiresAt > c.start).reduce((t, p) => t + p.remaining, 0);
+          return `<option value="${x.id}">${esc(x.name)} · ${left ? `${left} בכרטיסייה` : 'אין שיעורים'}</option>`; }).join('')}</select>
+        <button class="btn block soft" style="margin-top:8px" data-act="adBookFor" data-id="${c.id}">רישום לשיעור</button></details>` : '';
+    })() : ''}
+
     ${!c.cancelled && roster.length ? `<h3>הודעה לרשומות לשיעור</h3>
     <p class="tiny muted" style="margin-top:4px">תגיע רק ל-${roster.length} הרשומות, כהודעה באפליקציה וכהתראה בטלפון. למשל: "מביאות היום מגבת קטנה 🤍"</p>
     <textarea class="input" id="cm-body" rows="2" placeholder="מה רוצה לעדכן?"></textarea>
@@ -320,6 +332,9 @@ function shStudent({ id }) {
         ${p.takbull && p.price > 0 && p.refunded < p.price ? `<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
           <button class="btn sm ghost" data-act="adRefund" data-id="${s.id}" data-p="${p.id}">זיכוי דרך תקבול</button>
           <button class="btn sm ghost" data-act="adRefund" data-mark="1" data-id="${s.id}" data-p="${p.id}">כבר זיכיתי באתר של תקבול</button></div>` : ''}
+        ${p.expiresAt > now() ? `<div class="row" style="gap:6px;margin-top:8px"><span class="tiny muted">שיעורים בכרטיסייה:</span>
+          <button class="btn sm ghost" data-act="adAdjust" data-id="${s.id}" data-p="${p.id}" data-d="-1" ${p.remaining <= 0 ? 'disabled' : ''}>הורדת שיעור</button>
+          <button class="btn sm ghost" data-act="adAdjust" data-id="${s.id}" data-p="${p.id}" data-d="1" ${p.remaining >= p.credits ? 'disabled' : ''}>החזרת שיעור</button></div>` : ''}
         <div class="row" style="gap:6px;margin-top:8px"><span class="tiny muted">הארכת תוקף:</span>
           ${[7, 14, 30].map(d => `<button class="btn sm ghost" data-act="adExtend" data-id="${s.id}" data-p="${p.id}" data-d="${d}">+${d} יום</button>`).join('')}</div>
       </div>`; }).join('') : '<div class="card muted center small" style="margin:0">אין כרטיסיות</div>'}
@@ -330,7 +345,11 @@ function shStudent({ id }) {
       <label class="field grow"><span>כמה שיעורים</span><input class="input" id="gc-n" type="number" min="1" value="1"></label>
       <label class="field grow"><span>בתוקף (ימים)</span><input class="input" id="gc-days" type="number" min="1" value="30"></label>
     </div>
-    <label class="field"><span>הערה (רק את רואה)</span><input class="input" id="gc-note" placeholder="שילמה בביט"></label>
+    <div class="row">
+      <label class="field grow"><span>כמה שילמה (₪)</span><input class="input" id="gc-price" type="number" min="0" placeholder="0 = מתנה"></label>
+      <label class="field grow"><span>הערה (רק את רואה)</span><input class="input" id="gc-note" placeholder="שילמה בביט"></label>
+    </div>
+    <p class="tiny muted" style="margin-top:-4px">הסכום ייכנס להכנסות החודש ולקובץ האקסל.</p>
     <button class="btn block soft" data-act="adGrant" data-id="${s.id}">הוספה</button>
 
     <button class="btn block ghost" data-act="adBlock" data-id="${s.id}" style="color:var(--rose-deep)">${s.blocked ? 'ביטול החסימה' : 'חסימה (לא תוכל להירשם לשיעורים)'}</button>
@@ -691,11 +710,12 @@ document.addEventListener('click', e => {
     }
 
     case 'adGrant': {
-      const n = +val('gc-n'), days = +val('gc-days'), note = val('gc-note');
+      const n = +val('gc-n'), days = +val('gc-days'), note = val('gc-note'), price = Math.round(+val('gc-price') || 0);
       if (!(n > 0) || !(days > 0)) return toast('בדקי את מספר השיעורים והתוקף');
-      if (LIVE) return afterLive(() => API.grantCredits(id, n, days, note), `נוספו ${n} שיעורים 🤍`);
+      if (price < 0) return toast('בדקי את הסכום');
+      if (LIVE) return afterLive(() => API.grantCredits(id, n, days, note, price), `נוספו ${n} שיעורים 🤍`);
       const s = students().find(x => x.id === id);
-      s.purchases.push({ id: uid(), name: n === 1 ? 'שיעור (הוספה ידנית)' : `${n} שיעורים (הוספה ידנית)`, credits: n, remaining: n, price: 0, at: now(), expiresAt: now() + days * DAY, note });
+      s.purchases.push({ id: uid(), name: n === 1 ? 'שיעור (הוספה ידנית)' : `${n} שיעורים (הוספה ידנית)`, credits: n, remaining: n, price, at: now(), expiresAt: now() + days * DAY, note });
       save(); renderSheet(); render();
       return toast(`נוספו ל${firstName(s.name)} ${n} שיעורים 🤍`);
     }
@@ -711,6 +731,23 @@ document.addEventListener('click', e => {
       if (!confirm(mark ? `לסמן זיכוי של ${amount} ₪?\nהשיעורים שנשארו בכרטיסייה יבוטלו, והיא תקבל הודעה.` : `לזכות ${amount} ₪ בכרטיס האשראי של הלקוחה?\nהשיעורים שנשארו בכרטיסייה יבוטלו, והיא תקבל הודעה.`)) return;
       if (!LIVE) { p.refunded = (p.refunded || 0) + amount; p.refundedAt = now(); p.remaining = 0; save(); renderSheet(); render(); return toast(`זוכו ${amount} ₪`); }
       return afterLive(() => mark ? API.markRefunded(pid, amount) : API.refund(pid, amount), mark ? `סומן זיכוי של ${amount} ₪ ✓` : `זוכו ${amount} ₪ ✓`);
+    }
+    case 'adAdjust': {
+      const d = +el.dataset.d, pid = el.dataset.p;
+      if (d < 0 && !confirm('להוריד שיעור אחד מהכרטיסייה?')) return;
+      if (LIVE) return afterLive(() => API.adjustRemaining(pid, d), d < 0 ? 'ירד שיעור מהכרטיסייה' : 'השיעור הוחזר לכרטיסייה');
+      const p = students().find(x => x.id === id).purchases.find(x => x.id === pid);
+      p.remaining = Math.min(p.credits, Math.max(0, p.remaining + d));
+      save(); renderSheet(); render();
+      return toast(d < 0 ? 'ירד שיעור מהכרטיסייה' : 'השיעור הוחזר לכרטיסייה');
+    }
+    case 'adBookFor': {
+      const uidSel = document.getElementById('bf-user')?.value;
+      if (!uidSel) return toast('בחרי לקוחה');
+      const s = students().find(x => x.id === uidSel);
+      if (!confirm(`לרשום את ${s ? s.name : 'הלקוחה'} לשיעור? יורד לה שיעור מהכרטיסייה`)) return;
+      if (LIVE) return liveDo(async () => { await API.bookFor(uidSel, id); S.adminData = await API.adminLoad(); ui.sheet.roster = await API.classRoster(id); }, 'נרשמה לשיעור 🤍', false).then(() => renderSheet());
+      return toast('בהדגמה: נרשמה לשיעור 🤍');
     }
     case 'adExtend': {
       const d = +el.dataset.d, pid = el.dataset.p;
