@@ -314,9 +314,11 @@ const API = {
 
   /* ---- כלי ניהול ---- */
   async adminLoad() {
+    // חשבון הבודק של אפל (John Apple): לא מוצג ברשימת הלקוחות. לא למחוק אותו
+    const HIDDEN_CLIENTS = ['284616f2-4330-4063-87da-344d53d442ee'];
     const yearAgo = new Date(Date.now() - 400 * 864e5).toISOString();
     const [profs, purch, hs, books, prods, cls] = await Promise.all([
-      call(sb.from('profiles').select('*').eq('is_admin', false)),
+      call(sb.from('profiles').select('*').eq('is_admin', false).not('id', 'in', `(${HIDDEN_CLIENTS.join(',')})`)),
       call(sb.from('purchases').select('*')),
       call(sb.from('health_declarations').select('user_id,dance,needs_cert,cert_path,valid_until,signed_at').order('signed_at', { ascending: false })),
       call(sb.from('bookings').select('user_id,status,created_at,classes(starts_at)').in('status', ['attended', 'booked'])),
