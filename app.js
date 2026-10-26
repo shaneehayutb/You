@@ -934,7 +934,7 @@ function vJourney() {
       <p>${n === 1 ? 'שיעור' : 'שיעורים'}</p>
       ${reached ? `<p class="feel-word" style="margin-top:10px">${esc(reached.label)}</p>` : '<p class="muted" style="margin-top:10px">המסע שלך מתחיל בשיעור הראשון ✨</p>'}
       <div class="milestones">${CONFIG.milestones.map(m => `<div class="ms ${n >= m.n ? 'done' : ''}"><b>${m.n}</b></div>`).join('')}</div>
-      ${next ? `<p class="small muted">עוד ${next.n - n} ${next.n - n === 1 ? 'שיעור' : 'שיעורים'} ל"${esc(next.label)}"</p>` : '<p class="small">הגעת לכל ציוני הדרך. איזו את 💗</p>'}
+      ${next ? `<p class="small muted">עוד ${next.n - n} ${next.n - n === 1 ? 'שיעור' : 'שיעורים'} ל"${esc(next.label)}"</p>` : '<p class="small">50 פעמים בחרת בעצמך. ממשיכות לרקוד 🤍</p>'}
     </div>
 
     ${n ? `<div class="section-title"><h2>ההתקדמות שלי</h2></div>
