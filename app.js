@@ -609,7 +609,7 @@ function vAuth() {
     <p class="muted">כניסה בלחיצה אחת, בלי שם משתמש ובלי סיסמה.</p>
     <div class="stack" style="margin-top:28px">
       <button class="btn block auth-btn google" data-act="auth" data-id="google">${ICON.google}<span>המשך עם Google</span></button>
-      <button class="btn block auth-btn apple" data-act="auth" data-id="apple">${ICON.apple}<span>המשך עם Apple</span></button>
+      ${IS_ANDROID ? '' : `<button class="btn block auth-btn apple" data-act="auth" data-id="apple">${ICON.apple}<span>המשך עם Apple</span></button>`}
     </div>
     <p class="tiny muted center" style="margin-top:14px">בהמשך את מאשרת את <a href="#" data-act="legal" data-id="privacy">מדיניות הפרטיות</a></p>
     <p class="tiny muted center" style="margin-top:6px">כבר נרשמת בעבר? אותו כפתור מחזיר אותך פנימה.${LIVE ? '' : '<br>מצב הדגמה: ההתחברות האמיתית תחובר בשלב השרת.'}</p>
@@ -1352,7 +1352,7 @@ document.addEventListener('click', e => {
       if (!LIVE) { S.prefs[k] = on; save(); return render(); }
       return (async () => {
         if (on && !(await API.enablePush(true))) {
-          return toast(IS_NATIVE ? 'כדי לקבל התראות צריך לאשר אותן בהגדרות האייפון ← YOU ← הודעות' : 'התראות לטלפון יגיעו עם האפליקציה בחנות. בינתיים כל העדכונים מופיעים כאן בבית 🤍');
+          return toast(PLATFORM === 'ios' ? 'כדי לקבל התראות צריך לאשר אותן בהגדרות האייפון ← YOU ← הודעות' : 'התראות לטלפון יגיעו בקרוב. בינתיים כל העדכונים מופיעים כאן בבית 🤍');
         }
         S.prefs[k] = on; save(); render();
         if (!S.prefs.remind24 && !S.prefs.remind2 && !S.prefs.notify) await API.disablePush();
@@ -1535,3 +1535,13 @@ const demoParam = new URLSearchParams(location.search).get('demo');
 if (LIVE) boot();
 else if (demoParam) { demoFill(); go({ tab: ['home', 'schedule', 'journey', 'me'].includes(demoParam) ? demoParam : 'home' }); }
 else render();
+
+/* כפתור "חזור" של אנדרואיד: סוגר חלונית, חוזר לבית, ורק אז יוצא מהאפליקציה */
+if (typeof IS_ANDROID !== 'undefined' && IS_ANDROID && window.Capacitor?.Plugins?.App) {
+  window.Capacitor.Plugins.App.addListener('backButton', () => {
+    if (ui.sheet) return closeSheet();
+    if (ui.screen && ui.screen !== 'welcome' && !S.user) return go({ screen: 'welcome' });
+    if (ui.tab && ui.tab !== 'home' && ui.tab !== 'admin') return go({ tab: S.admin ? 'admin' : 'home' });
+    window.Capacitor.Plugins.App.exitApp();
+  });
+}

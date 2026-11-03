@@ -309,6 +309,9 @@ function shStudent({ id }) {
       <a class="btn sm" href="${waLink(s.phone)}" target="_blank" rel="noopener">וואטסאפ</a>
       <span class="small muted" dir="ltr">${esc(s.phone)}</span>
     </div>
+    ${s.email ? `<div class="row" style="gap:8px;margin-top:-6px"><span class="tiny muted">מייל לקבלות:</span>
+      <span class="small" dir="ltr" style="user-select:all;word-break:break-all">${esc(s.email)}</span>
+      <button class="btn sm ghost" data-act="adCopy" data-v="${esc(s.email)}">העתקה</button></div>` : ''}
     <div class="row" style="gap:12px">
       <div class="card grow center" style="margin:0"><p class="muted small">שיעורים שרקדה</p><h2>${s.attended || 0}</h2></div>
       <div class="card grow center" style="margin:0"><p class="muted small">שיעור אחרון</p><h2 style="font-size:20px">${s.lastAt ? fmtDate(s.lastAt) : '—'}</h2></div>
@@ -327,7 +330,13 @@ function shStudent({ id }) {
       const active = p.remaining > 0 && p.expiresAt > now();
       return `<div class="card" style="margin:0">
         <div class="row between"><b>${esc(p.name)}</b>${active ? '<span class="tag green">פעילה</span>' : '<span class="tag">הסתיימה</span>'}</div>
-        <p class="small muted" style="margin-top:4px">${p.remaining}/${p.credits} נותרו · בתוקף עד ${fmtDate(p.expiresAt)}${p.price > 0 ? ` · שולם ${p.price} ₪` : ''}${p.note ? ` · ${esc(p.note)}` : ''}</p>
+        <p class="small muted" style="margin-top:4px">${p.remaining}/${p.credits} נותרו · בתוקף עד ${fmtDate(p.expiresAt)}</p>
+        <div class="pay-box tiny" style="margin-top:6px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.03);line-height:1.7">
+          <div>📅 נקנה ב-${fmtDate(p.at)}.${String(new Date(p.at).getFullYear()).slice(2)} · ${new Date(p.at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+          <div>💳 ${p.takbull ? 'שולם באפליקציה (תקבול)' : 'הוספה ידנית'}${p.price > 0 ? ` · <b>${p.price} ₪</b>` : ' · ללא תשלום'}</div>
+          ${p.tx ? `<div>🧾 מס׳ עסקה בתקבול: <span dir="ltr" style="user-select:all">${esc(p.tx)}</span></div>` : ''}
+          ${p.note ? `<div>📝 ${esc(p.note)}</div>` : ''}
+        </div>
         ${p.refunded > 0 ? `<p class="small" style="margin-top:4px;color:var(--rose-deep)">זוכה ${p.refunded} ₪ · ${fmtDate(p.refundedAt)}</p>` : ''}
         ${p.takbull && p.price > 0 && p.refunded < p.price ? `<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
           <button class="btn sm ghost" data-act="adRefund" data-id="${s.id}" data-p="${p.id}">זיכוי דרך תקבול</button>
@@ -561,14 +570,14 @@ async function exportMonth(sel) {
     q('שאיין · שני חיות · עוסק מס׳ 212291546 · בר יהודה 17, בת ים'),
     q('הופק מהאפליקציה ב-' + d(now()) + ' · הקבלות והחשבוניות הרשמיות נמצאות במערכת תקבול'),
     '',
-    ['תאריך', 'סוג', 'לקוחה', 'טלפון', 'מוצר', 'סכום (₪)', 'הערה'].map(q).join(',')];
+    ['תאריך', 'סוג', 'לקוחה', 'טלפון', 'מייל', 'מוצר', 'סכום (₪)', 'מס׳ עסקה בתקבול', 'הערה'].map(q).join(',')];
   for (const p of all.filter(p => p.at >= m.from && p.at < to).sort((a, b) => a.at - b.at))
-    lines.push([d(p.at), p.price > 0 ? 'מכירה' : 'הוספה ידנית', who[p.id]?.name || '—', who[p.id]?.phone || '', p.credits === 1 ? 'שיעור בודד' : p.name, p.price > 0 ? p.price : 0, p.price > 0 ? '' : p.note || ''].map(q).join(','));
+    lines.push([d(p.at), p.takbull ? 'מכירה (תקבול)' : p.price > 0 ? 'מכירה (ידני)' : 'הוספה ידנית', who[p.id]?.name || '—', who[p.id]?.phone || '', who[p.id]?.email || '', p.credits === 1 ? 'שיעור בודד' : p.name, p.price > 0 ? p.price : 0, p.tx || '', p.note || ''].map(q).join(','));
   for (const p of all.filter(p => p.refunded > 0 && p.refundedAt >= m.from && p.refundedAt < to).sort((a, b) => a.refundedAt - b.refundedAt))
-    lines.push([d(p.refundedAt), 'זיכוי', who[p.id]?.name || '—', who[p.id]?.phone || '', p.credits === 1 ? 'שיעור בודד' : p.name, -p.refunded, `זיכוי על רכישה מ-${d(p.at)}`].map(q).join(','));
-  lines.push('', [q('סה"כ מכירות'), '', '', '', '', m.total + m.refunds, ''].join(','));
-  if (m.refunds) lines.push([q('סה"כ זיכויים'), '', '', '', '', -m.refunds, ''].join(','));
-  lines.push([q('סה"כ הכנסות נטו'), '', '', '', '', m.total, ''].join(','));
+    lines.push([d(p.refundedAt), 'זיכוי', who[p.id]?.name || '—', who[p.id]?.phone || '', who[p.id]?.email || '', p.credits === 1 ? 'שיעור בודד' : p.name, -p.refunded, p.tx || '', `זיכוי על רכישה מ-${d(p.at)}`].map(q).join(','));
+  lines.push('', [q('סה"כ מכירות'), '', '', '', '', '', m.total + m.refunds, '', ''].join(','));
+  if (m.refunds) lines.push([q('סה"כ זיכויים'), '', '', '', '', '', -m.refunds, '', ''].join(','));
+  lines.push([q('סה"כ הכנסות נטו'), '', '', '', '', '', m.total, '', ''].join(','));
   const name = `YOU-${m.year}-${pad(new Date(m.from).getMonth() + 1)}.csv`;
   const file = new File(['\ufeff' + lines.join('\r\n')], name, { type: 'text/csv' });
   try {
@@ -732,6 +741,10 @@ document.addEventListener('click', e => {
       if (!LIVE) { p.refunded = (p.refunded || 0) + amount; p.refundedAt = now(); p.remaining = 0; save(); renderSheet(); render(); return toast(`זוכו ${amount} ₪`); }
       return afterLive(() => mark ? API.markRefunded(pid, amount) : API.refund(pid, amount), mark ? `סומן זיכוי של ${amount} ₪ ✓` : `זוכו ${amount} ₪ ✓`);
     }
+    case 'adCopy': {
+      const v = el.dataset.v || '';
+      return (navigator.clipboard?.writeText(v) || Promise.reject()).then(() => toast('הועתק ✓'), () => toast(v));
+    }
     case 'adAdjust': {
       const d = +el.dataset.d, pid = el.dataset.p;
       if (d < 0 && !confirm('להוריד שיעור אחד מהכרטיסייה?')) return;
@@ -793,7 +806,7 @@ document.addEventListener('click', e => {
       return (async () => {
         // התראה לטלפון של שחר: צריך אישור התראות באייפון
         if (LIVE && on && k === 'songs' && !(await API.enablePush(true))) {
-          return toast(IS_NATIVE ? 'כדי לקבל התראות צריך לאשר אותן בהגדרות האייפון ← YOU ← הודעות' : 'התראות לטלפון מגיעות רק באפליקציה באייפון');
+          return toast(PLATFORM === 'ios' ? 'כדי לקבל התראות צריך לאשר אותן בהגדרות האייפון ← YOU ← הודעות' : 'התראות לטלפון מגיעות רק באפליקציה באייפון');
         }
         S.adminNotify = np; save(); render();
         if (LIVE) API.saveSettings({ admin_notify: np }).catch(err => toast(errHe(err)));

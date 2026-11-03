@@ -7,6 +7,9 @@ const sb = LIVE ? window.supabase.createClient(window.SUPA_CONFIG.url, window.SU
 
 // האם רצים בתוך אפליקציית Capacitor (אייפון) ולא בדפדפן
 const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+// באיזו מערכת: 'ios' / 'android' / 'web'
+const PLATFORM = IS_NATIVE && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'web';
+const IS_ANDROID = PLATFORM === 'android';
 
 async function sha256Hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -36,10 +39,12 @@ async function nativeAppleSignIn() {
 
 // Google: התחברות native באייפון (Client ID של iOS ב-Google Cloud, פרויקט you-by-shahar)
 const GOOGLE_IOS_CLIENT_ID = '959969996716-q2v8o0c1bshsj3gmbcpe8o7jsj2562j9.apps.googleusercontent.com';
+// באנדרואיד: Client ID מסוג Web (אותו שמחובר ל-Supabase). TODO: למלא לפני העלאה ל-Google Play
+const GOOGLE_WEB_CLIENT_ID = '';
 let googleReady = null;
 async function nativeGoogleSignIn() {
   const { SocialLogin } = window.Capacitor.Plugins;
-  googleReady = googleReady || SocialLogin.initialize({ google: { iOSClientId: GOOGLE_IOS_CLIENT_ID, mode: 'online' } });
+  googleReady = googleReady || SocialLogin.initialize({ google: IS_ANDROID ? { webClientId: GOOGLE_WEB_CLIENT_ID, mode: 'online' } : { iOSClientId: GOOGLE_IOS_CLIENT_ID, mode: 'online' } });
   await googleReady;
   const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
   const token = res?.result?.idToken;
@@ -198,7 +203,7 @@ const API = {
   async signIn(provider) {
     if (provider === 'test') return call(sb.auth.signInAnonymously());
     // באפליקציית האייפון: התחברות native של אפל (חלון של המערכת), ואז מעבירים את הטוקן ל-Supabase
-    if (provider === 'apple' && IS_NATIVE) return nativeAppleSignIn();
+    if (provider === 'apple' && PLATFORM === 'ios') return nativeAppleSignIn();
     if (provider === 'google' && IS_NATIVE) return nativeGoogleSignIn();
     return call(sb.auth.signInWithOAuth({ provider, options: { redirectTo: (location.origin + location.pathname).replace(/\/(index\.html)?$/, '') } }));
   },
@@ -209,7 +214,8 @@ const API = {
 
   /** התראות לטלפון — רק אחרי שהלקוחה הדליקה מתג בפרופיל (דרישה של אפל). מחזיר true אם אישרה */
   async enablePush(ask = true) {
-    const PN = IS_NATIVE && window.Capacitor.Plugins.PushNotifications;
+    // התראות לטלפון כרגע רק באייפון (באנדרואיד צריך עוד חיבור ל-Firebase)
+    const PN = PLATFORM === 'ios' && window.Capacitor.Plugins.PushNotifications;
     if (!PN || !this.uid) return false;
     try {
       if (!pushStarted) {
@@ -321,23 +327,25 @@ const API = {
     // חשבון הבודק של אפל (John Apple): לא מוצג ברשימת הלקוחות. לא למחוק אותו
     const HIDDEN_CLIENTS = ['284616f2-4330-4063-87da-344d53d442ee'];
     const yearAgo = new Date(Date.now() - 400 * 864e5).toISOString();
-    const [profs, purch, hs, books, prods, cls] = await Promise.all([
+    const [profs, purch, hs, books, prods, cls, orders] = await Promise.all([
       call(sb.from('profiles').select('*').eq('is_admin', false).not('id', 'in', `(${HIDDEN_CLIENTS.join(',')})`)),
       call(sb.from('purchases').select('*')),
       call(sb.from('health_declarations').select('user_id,dance,needs_cert,cert_path,valid_until,signed_at').order('signed_at', { ascending: false })),
       call(sb.from('bookings').select('user_id,status,created_at,classes(starts_at)').in('status', ['attended', 'booked'])),
       call(sb.from('products').select('id,name')),
       call(sb.from('classes').select('starts_at,duration_min,cancelled_at').gte('starts_at', yearAgo)),
+      call(sb.from('payment_orders').select('purchase_id,tx_number,paid_at').eq('status', 'paid')),
     ]);
+    const txOf = {}; for (const o of orders) if (o.purchase_id) txOf[o.purchase_id] = o.tx_number || '';
     const ts = x => x ? Date.parse(x) : null;
     const pname = id => id === 'manual' ? 'הוספה ידנית' : prods.find(p => p.id === id)?.name || id;
     const purchases = purch.map(p => ({ id: p.id, userId: p.user_id, name: pname(p.product_id), credits: p.credits, remaining: p.remaining, price: p.price_ils, at: ts(p.purchased_at), expiresAt: ts(p.expires_at), note: p.note,
-      refunded: +p.refunded_ils || 0, refundedAt: ts(p.refunded_at), takbull: !!p.takbull_ref && !/^(MANUAL|TEST)-/.test(p.takbull_ref) }));
+      refunded: +p.refunded_ils || 0, refundedAt: ts(p.refunded_at), takbull: !!p.takbull_ref && !/^(MANUAL|TEST)-/.test(p.takbull_ref), tx: txOf[p.id] || '' }));
     const students = profs.map(p => {
       const h = hs.find(x => x.user_id === p.id);
       const mine = books.filter(b => b.user_id === p.id && b.classes && ts(b.classes.starts_at) < Date.now());
       return {
-        id: p.id, name: p.full_name || '—', phone: p.phone || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
+        id: p.id, name: p.full_name || '—', phone: p.phone || '', email: p.email || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
         attended: mine.filter(b => b.status === 'attended').length || mine.length,
         lastAt: Math.max(0, ...mine.map(b => ts(b.classes.starts_at))) || null,
         health: h ? { dance: h.dance, needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
