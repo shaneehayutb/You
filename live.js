@@ -272,9 +272,9 @@ const API = {
     const { data: r, error } = await sb.functions.invoke('takbull', { body: { action: 'create', productId } });
     if (error) {
       const b = await error.context?.json?.().catch(() => null);
-      throw new Error(b?.error || 'payment_unavailable');
+      const e = new Error(b?.error || 'payment_unavailable'); e.detail = b?.detail || (error.context?.status ? 'HTTP ' + error.context.status : error.message); throw e;
     }
-    if (!r?.url) throw new Error(r?.error || 'payment_unavailable');
+    if (!r?.url) { const e = new Error(r?.error || 'payment_unavailable'); e.detail = r?.detail; throw e; }
     return r;
   },
   async payCheck(uniqId) {

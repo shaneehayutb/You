@@ -1341,7 +1341,7 @@ document.addEventListener('click', e => {
         el.disabled = true; el.textContent = 'פותחות את דף התשלום…';
         return API.payCreate(id)
           .then(r => { payDone = false; openSheet({ type: 'pay', id, uniqId: r.uniqId, url: r.url }); })
-          .catch(e => { toast(errHe(e)); renderSheet(); })
+          .catch(e => { toast(errHe(e) + (e?.detail ? ' · ' + e.detail : '')); renderSheet(); })
           .finally(() => { busy = false; });
       }
       buy(id); closeSheet(); render();
