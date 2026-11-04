@@ -1057,6 +1057,7 @@ function vAdmin() {
     <div class="card" style="padding:4px 18px">
       ${S.series.filter(x => !x.until).sort((a, b) => a.dow - b.dow || a.h - b.h).map(x => `<div class="list-row">
         <div class="grow"><b>${esc(x.title)}</b><p class="tiny muted">כל יום ${dayNames[x.dow]} · ${pad(x.h)}:${pad(x.m)} · ${x.cap} מקומות</p></div>
+        <button class="btn sm ghost" data-act="adEditSeries" data-id="${x.id}">עריכה</button>
         <button class="btn sm ghost" data-act="stopSeries" data-id="${x.id}">הפסקה</button></div>`).join('') || '<p class="muted small" style="padding:12px 0">אין שיעורים קבועים</p>'}
     </div>
     <p class="tiny muted" style="margin:8px 4px 0">כל שיעור קבוע מוצג אוטומטית חודשיים קדימה</p>

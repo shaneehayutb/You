@@ -251,7 +251,7 @@ function shAdminClass2({ id }) {
   </div>`;
 }
 
-function shEditClass({ id }) {
+function shEditClass({ id, all }) {
   const c = cls(id), d = new Date(c.start);
   return `<div class="stack">
     <h1>עריכת שיעור</h1>
@@ -264,8 +264,8 @@ function shEditClass({ id }) {
     </div>
     <label class="field"><span>מקומות</span><input class="input" id="ec-cap" type="number" value="${c.cap}"></label>
     ${c.seriesId ? `<div class="card" style="margin:0;padding:6px 14px">
-      <label class="check" style="margin:6px 0"><input type="radio" name="ec-scope" value="one" checked> <span>רק השיעור של ${fmtDate(c.start)}</span></label>
-      <label class="check" style="margin:6px 0"><input type="radio" name="ec-scope" value="all"> <span>כל השיעורים הקבועים של יום ${dayNames[d.getDay()]} ${fmtTime(c.start)}, מהתאריך הזה והלאה</span></label>
+      <label class="check" style="margin:6px 0"><input type="radio" name="ec-scope" value="one" ${all ? '' : 'checked'}> <span>רק השיעור של ${fmtDate(c.start)}</span></label>
+      <label class="check" style="margin:6px 0"><input type="radio" name="ec-scope" value="all" ${all ? 'checked' : ''}> <span>כל השיעורים הקבועים של יום ${dayNames[d.getDay()]} ${fmtTime(c.start)}, מהתאריך הזה והלאה</span></label>
       <p class="tiny muted">"כל השיעורים" משנה שם, הערה ומקומות. שינוי של תאריך או שעה חל רק על השיעור הזה.</p>
     </div>` : '<p class="tiny muted">הרשומות יקבלו הודעה אם השעה משתנה.</p>'}
     <button class="btn block" data-act="adSaveClass" data-id="${c.id}">שמירה</button>
@@ -653,6 +653,12 @@ document.addEventListener('click', e => {
     case 'adStudents': return openSheet({ type: 'students' });
     case 'adStudent': return openSheet({ type: 'student', id });
     case 'adEditClass': return openSheet({ type: 'editClass', id });
+    case 'adEditSeries': {
+      // עריכת שיעור קבוע: נפתח השיעור הקרוב בסדרה, עם "כל השיעורים" מסומן
+      const next = S.classes.filter(c => c.seriesId === id && c.start > now() && !c.cancelled).sort((a, b) => a.start - b.start)[0];
+      if (!next) return toast('אין שיעור קרוב בסדרה הזו לעריכה');
+      return openSheet({ type: 'editClass', id: next.id, all: true });
+    }
 
     case 'adAttend': {
       const v = el.dataset.v === '1', b = el.dataset.b;
