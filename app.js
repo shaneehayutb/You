@@ -803,7 +803,7 @@ function classRow(c, opts = {}) {
   else if (b) tag = '<span class="tag green">רשומה ✓</span>';
   else if (c.start < now()) tag = '<span class="tag">הסתיים</span>';
   else if (left <= 0) tag = '<span class="tag">מלא</span>';
-  else if (left <= 3) tag = `<span class="tag rose">נשארו ${left} מקומות</span>`;
+  else if (left <= 3) tag = `<span class="tag rose">${left === 1 ? 'נשאר מקום אחד' : `נשארו ${left} מקומות`}</span>`;
   return `<div class="card class-item ${c.cancelled ? 'cancelled' : ''}" data-act="class" data-id="${c.id}" role="button">
     <div class="time-pill">${fmtTime(c.start)}<small>${c.dur} דק׳</small></div>
     <div class="info">
@@ -1137,7 +1137,7 @@ function shClass({ id }) {
     <div class="row" style="gap:8px;flex-wrap:wrap">
       <span class="tag">${fmtTime(c.start)}–${fmtTime(c.start + c.dur * 60e3)}</span>
       <span class="tag">${c.dur} דקות</span>
-      ${!c.cancelled && !past ? `<span class="tag ${left <= 3 ? 'rose' : ''}">${left > 0 ? `${left} מקומות פנויים` : 'מלא'}</span>` : ''}
+      ${!c.cancelled && !past && left <= 3 ? `<span class="tag rose">${left <= 0 ? 'מלא' : left === 1 ? 'נשאר מקום אחד' : `נשארו ${left} מקומות`}</span>` : ''}
     </div>
     <p class="small muted">📍 ${esc(CONFIG.location)}</p>
     ${action}
