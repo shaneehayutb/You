@@ -251,6 +251,8 @@ function requireAuth() {
 
 function book(c) {
   if (S.guest || !S.user) return requireAuth();
+  // חשבון המנהלת לא עבר הרשמה של לקוחה (הצהרת בריאות ותקנון), ולכן השרת לא רושם אותו לשיעור
+  if (!isOnboarded() && S.isAdmin) return toast('חשבון המנהלת לא רשום כלקוחה, ולכן אי אפשר להירשם ממנו לשיעור. לבדיקה: חשבון הבדיקה, או "רישום לקוחה לשיעור" בניהול');
   if (!isOnboarded()) return go({ screen: 'welcome' });
   if (c.cancelled || c.start < now()) return;
   if (spotsLeft(c) <= 0) return toast('השיעור הזה כבר מלא');
