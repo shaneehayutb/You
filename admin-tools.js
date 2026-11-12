@@ -173,6 +173,8 @@ function vClients() {
       <div class="card center"><p class="muted small">חדשות החודש</p><h2>${fresh}</h2></div>
     </div>
     <button class="btn block soft" style="margin-top:14px" data-act="adBroadcast">✉️ הודעה לכל הלקוחות</button>
+    ${LIVE ? (() => { intakesEnsureLoaded(); const open = (S.intakes || []).filter(x => !x.handled).length;
+      return `<button class="btn block soft" style="margin-top:8px" data-act="adIntakes">📝 טפסי הרשמה מהאתר${open ? ` · <b>${open} חדשים</b>` : ''}</button>`; })() : ''}
 
     <div class="section-title"><h2>דורש תשומת לב</h2></div>
     ${att.length ? `<div class="card" style="padding:4px 18px">${att.slice(0, 6).map(({ s, why, msg }) => `
@@ -374,6 +376,55 @@ const NOTIFY = [
   ['songs', 'תזכורת להעלות שירים (4 שעות אחרי שיעור)'],
 ];
 const notifyPrefs = () => ({ booked: true, cancelled: true, newClient: true, cardEnding: false, songs: false, ...(S.adminNotify || {}) });
+
+/* ---------- טפסי הרשמה מהאתר (form.html) ---------- */
+const FORM_URL = 'https://shaneehayutb.github.io/You/form.html';
+function intakesEnsureLoaded(force) {
+  if (!LIVE || S._intakesLoading || (S.intakes && !force)) return;
+  S._intakesLoading = true;
+  API.intakesLoad().then(r => { S.intakes = r; }).catch(() => {}).finally(() => { S._intakesLoading = false; render(); if (ui.sheet?.type === 'intakes') renderSheet(); });
+}
+const HEALTH_SHORT = ['מחלת לב / לחץ דם', 'כאב בחזה במנוחה', 'כאב בחזה ביום-יום', 'כאב בחזה במאמץ', 'סחרחורת', 'איבוד הכרה', 'אסתמה: תרופות', 'אסתמה: קוצר נשימה', 'משפחה: מחלת לב', 'משפחה: מוות פתאומי', 'פעילות רק בהשגחה', 'מחלה כרונית', 'הריון בסיכון'];
+const DANCE_SHORT = { joints: 'כאב/פציעה במפרקים', surgery: 'ניתוח ב-6 חודשים', pregnant: 'הריון / אחרי לידה' };
+function shIntakes({ id }) {
+  const list = S.intakes || [];
+  if (id) {
+    const x = list.find(i => i.id === id); if (!x) return '<p class="muted">הטופס לא נמצא</p>';
+    const yes = (x.answers || []).map((v, i) => v === true ? HEALTH_SHORT[i] : null).filter(Boolean);
+    const dance = Object.entries(x.dance || {}).filter(([, v]) => v === true).map(([k]) => DANCE_SHORT[k] || k);
+    const d = new Date(x.created_at);
+    return `<div class="stack">
+      <button class="link small" data-act="adIntakes" style="align-self:flex-start">→ חזרה לטפסים</button>
+      <div><h1>${esc(x.full_name)}</h1><p class="muted small">${x.age ? `בת ${x.age} · ` : ''}מילאה ב-${fmtDate(d)}.${String(d.getFullYear()).slice(2)}</p></div>
+      ${x.phone ? `<div class="row" style="gap:8px"><a class="btn sm" href="${waLink(x.phone)}" target="_blank" rel="noopener">וואטסאפ</a><span class="small muted" dir="ltr">${esc(x.phone)}</span></div>` : ''}
+      ${x.email ? `<div class="row" style="gap:8px"><span class="tiny muted">מייל לקבלות:</span><span class="small" dir="ltr" style="user-select:all;word-break:break-all">${esc(x.email)}</span>
+        <button class="btn sm ghost" data-act="adCopy" data-v="${esc(x.email)}">העתקה</button></div>` : ''}
+      <h3>בריאות</h3>
+      <div class="card" style="margin:0"><div class="tags">${x.needs_cert ? '<span class="tag warn">צריך אישור רפואי</span>' : '<span class="tag green">ללא הערות</span>'}
+        ${yes.map(t => `<span class="tag">${esc(t)}</span>`).join('')}${dance.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+        ${x.details ? `<p class="small" style="margin-top:8px">📝 ${esc(x.details)}</p>` : ''}
+        ${x.parent_name ? `<p class="small" style="margin-top:6px">הסכמת הורה: ${esc(x.parent_name)}</p>` : ''}</div>
+      <h3>צילומים</h3>
+      <div class="card" style="margin:0"><div class="tags">${x.photo === 'no' ? '<span class="tag warn">🚫 לא מצטלמת</span>' : '<span class="tag green">📷 מאשרת צילום ושיתוף</span>'}</div></div>
+      <h3>תקנון וחתימה</h3>
+      <div class="card" style="margin:0"><p class="small">✓ אישרה תקנון ומדיניות פרטיות · חתמה: <b>${esc(x.signature)}</b></p></div>
+      <button class="btn block ${x.handled ? 'ghost' : ''}" data-act="adIntakeDone" data-id="${x.id}" data-v="${x.handled ? 0 : 1}">${x.handled ? 'החזרה ל"חדשים"' : '✓ טיפלתי (שילמה ונרשמה)'}</button>
+    </div>`;
+  }
+  const row = x => `<button class="list-row plain" style="width:100%;text-align:right" data-act="adIntake" data-id="${x.id}">
+      <span class="grow"><b>${esc(x.full_name)}</b><span class="tiny muted" style="display:block">${fmtDate(new Date(x.created_at))}${x.age ? ` · בת ${x.age}` : ''}${x.needs_cert ? ' · <b style="color:var(--rose-deep)">צריך אישור רפואי</b>' : ''}${x.photo === 'no' ? ' · 🚫 לא מצטלמת' : ''}</span></span>
+      <span class="muted">‹</span></button>`;
+  const open = list.filter(x => !x.handled), done = list.filter(x => x.handled);
+  return `<div class="stack">
+    <h1>טפסי הרשמה מהאתר</h1>
+    <p class="small muted">למי שמגיעה לשיעור ראשון בלי האפליקציה. שולחים לה את הקישור:</p>
+    <div class="row" style="gap:8px"><span class="small" dir="ltr" style="user-select:all;word-break:break-all">${FORM_URL}</span>
+      <button class="btn sm ghost" data-act="adCopy" data-v="${FORM_URL}">העתקה</button></div>
+    <h3>חדשים (${open.length})</h3>
+    <div class="card" style="padding:4px 18px;margin:0">${open.map(row).join('') || `<p class="muted small" style="padding:12px 0">${S.intakes ? 'אין טפסים חדשים' : 'טוען…'}</p>`}</div>
+    ${done.length ? `<details><summary class="small muted" style="padding:6px 0">טופלו (${done.length})</summary><div class="card" style="padding:4px 18px;margin:0">${done.map(row).join('')}</div></details>` : ''}
+  </div>`;
+}
 
 /* ---------- רשימת משימות (במסך הניהול) ---------- */
 function tasksEnsureLoaded() {
@@ -615,7 +666,7 @@ function shSales({ m: sel }) {
   </div>`;
 }
 
-window.EXTRA_SHEETS = { sales: shSales, revenue: shRevenue, adminClass: shAdminClass2, editClass: shEditClass, broadcast: shBroadcast, students: shStudents, student: shStudent };
+window.EXTRA_SHEETS = { intakes: shIntakes, sales: shSales, revenue: shRevenue, adminClass: shAdminClass2, editClass: shEditClass, broadcast: shBroadcast, students: shStudents, student: shStudent };
 
 /* ---------- פעולות ---------- */
 const reopen = () => { renderSheet(); render(); };
@@ -750,6 +801,12 @@ document.addEventListener('click', e => {
     case 'adCopy': {
       const v = el.dataset.v || '';
       return (navigator.clipboard?.writeText(v) || Promise.reject()).then(() => toast('הועתק ✓'), () => toast(v));
+    }
+    case 'adIntakes': intakesEnsureLoaded(true); return openSheet({ type: 'intakes' });
+    case 'adIntake': return openSheet({ type: 'intakes', id });
+    case 'adIntakeDone': {
+      const v = el.dataset.v === '1', x = (S.intakes || []).find(i => i.id === id);
+      return API.intakeHandled(id, v).then(() => { if (x) x.handled = v; render(); openSheet({ type: 'intakes' }); toast(v ? 'סומן כטופל ✓' : 'הוחזר לחדשים'); }).catch(err => toast(errHe(err)));
     }
     case 'adAdjust': {
       const d = +el.dataset.d, pid = el.dataset.p;
