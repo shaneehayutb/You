@@ -130,19 +130,10 @@ function render() {
 }
 
 function renderDone() {
-  const msg = encodeURIComponent(`היי שחר 🤍 מילאתי את טופס ההרשמה${f.name ? ` (${f.name})` : ''}, והנה אישור התשלום בביט:`);
-  const anyYes = f.answers.some(x => x === true);
   $app.innerHTML = `<div class="stack fade-in center">
     <div class="done-heart">🤍</div>
     <h1>תודה${f.name ? ', ' + esc(f.name.split(' ')[0]) : ''}!</h1>
     <p>הטופס התקבל אצל שחר.</p>
-    <div class="card stack" style="text-align:right">
-      <h3>מה עכשיו?</h3>
-      <p class="small">1. מעבירות את התשלום בביט לשחר: <b dir="ltr">054-554-3035</b></p>
-      <p class="small">2. שולחות לשחר צילום של אישור התשלום בוואטסאפ${anyYes ? ', יחד עם האישור הרפואי' : ''}.</p>
-      <p class="small">3. שחר תאשר לך את השיעור 💃</p>
-    </div>
-    <a class="btn block" href="https://wa.me/${WHATSAPP}?text=${msg}" target="_blank" rel="noopener">💬 שליחה לשחר בוואטסאפ</a>
     <p class="tiny muted">נתראה בסטודיו · מנחם יקואל 6, בת ים</p>
   </div>`;
   window.scrollTo(0, 0);
