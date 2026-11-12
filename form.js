@@ -64,7 +64,7 @@ function render() {
     <div class="f-logo"><img src="icon-512.png" alt="YOU by Shahar"></div>
     <div class="lead-card">
       <p class="hand">איזה כיף שאת מגיעה 💃</p>
-      <p>כמה פרטים קצרים לפני השיעור הראשון. לוקח בערך 3 דקות.</p>
+      <p>כמה פרטים קצרים לפני השיעור הראשון.</p>
     </div>
 
     <p class="f-step">1 · נעים להכיר</p>
