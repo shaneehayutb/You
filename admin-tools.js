@@ -400,9 +400,12 @@ function shIntakes({ id }) {
       ${x.email ? `<div class="row" style="gap:8px"><span class="tiny muted">מייל לקבלות:</span><span class="small" dir="ltr" style="user-select:all;word-break:break-all">${esc(x.email)}</span>
         <button class="btn sm ghost" data-act="adCopy" data-v="${esc(x.email)}">העתקה</button></div>` : ''}
       <h3>בריאות</h3>
-      <div class="card" style="margin:0"><div class="tags">${x.needs_cert ? '<span class="tag warn">צריך אישור רפואי</span>' : '<span class="tag green">ללא הערות</span>'}
-        ${yes.map(t => `<span class="tag">${esc(t)}</span>`).join('')}${dance.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
-        ${x.details ? `<p class="small" style="margin-top:8px">📝 ${esc(x.details)}</p>` : ''}
+      <div class="card" style="margin:0">
+        <p class="tiny muted">הצהרת הבריאות</p>
+        <div class="tags">${x.needs_cert ? '<span class="tag warn">צריך אישור רפואי</span>' : '<span class="tag green">תקינה, לא צריך אישור רפואי</span>'}
+          ${yes.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+        ${dance.length ? `<p class="tiny muted" style="margin-top:10px">להתאמת התנועה</p><div class="tags">${dance.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+        ${x.details ? `<p class="tiny muted" style="margin-top:10px">מה שכתבה לך</p><p class="small">📝 ${esc(x.details)}</p>` : ''}
         ${x.parent_name ? `<p class="small" style="margin-top:6px">הסכמת הורה: ${esc(x.parent_name)}</p>` : ''}</div>
       <h3>צילומים</h3>
       <div class="card" style="margin:0"><div class="tags">${x.photo === 'no' ? '<span class="tag warn">🚫 לא מצטלמת</span>' : '<span class="tag green">📷 מאשרת צילום ושיתוף</span>'}</div></div>
