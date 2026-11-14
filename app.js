@@ -708,11 +708,7 @@ function vHealth() {
         <input type="file" accept="image/*,application/pdf" hidden data-cert="form"></label>` : ''}
 
     <h2 style="margin-top:22px">כדי ששחר תתאים לך את התנועה</h2>
-    <p class="muted small">לא משפיע על ההרשמה — רק עוזר לשחר לדעת.</p>
-    <div class="card" style="padding:4px 16px">
-      ${CONFIG.danceQuestions.map(d => `<div class="q"><div class="grow">${esc(d.q)}</div>${yn('dq', d.k, b[d.k])}</div>`).join('')}
-    </div>
-    <label class="field"><span>עוד משהו ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details" placeholder="למשל: רגישות בכתף ימין">${esc(f.details)}</textarea></label>
+    <label class="field"><span>יש כאב, פציעה, ניתוח, הריון או כל דבר אחר ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details" placeholder="למשל: רגישות בכתף ימין">${esc(f.details)}</textarea></label>
 
     ${minor ? `<div class="card stack"><h3>את מתחת לגיל 18</h3><p class="small muted">צריך גם הסכמה של אחד ההורים.</p>
       <label class="field"><span>שם ההורה</span><input class="input" id="f-parent" value="${esc(f.parent)}"></label>
@@ -1459,7 +1455,6 @@ document.addEventListener('click', e => {
     case 'health': {
       const f = ui.form, a = f.answers;
       if (a.some(x => x === null)) return toast('נשארו שאלות בלי תשובה בחלק הראשון');
-      if (CONFIG.danceQuestions.some(d => f.dance[d.k] == null)) return toast('נשארו שאלות בלי תשובה');
       if ((S.user.age || 99) < 18 && (val('f-parent').length < 2 || !document.getElementById('f-pok').checked)) return toast('צריך הסכמה של הורה');
       if (val('f-sign').length < 2) return toast('חסרה חתימה');
       if (!document.getElementById('f-hok').checked) return toast('צריך לאשר את ההצהרה');
