@@ -78,7 +78,7 @@ function render() {
     <div class="card" style="padding:4px 16px">${rows}</div>
     ${anyYes ? `<div class="note warn">ענית "כן" על אחת השאלות. זה לא אומר שאי אפשר לרקוד 🤍 רק צריך אישור קצר מרופא (מהשלושה חודשים האחרונים) שאין מניעה לפעילות גופנית. שלחי אותו לשחר בוואטסאפ לפני השיעור.</div>` : ''}
     <h3 style="margin-top:10px">כדי ששחר תתאים לך את התנועה</h3>
-    <label class="field"><span>יש כאב, פציעה, ניתוח, הריון או כל דבר אחר ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details" placeholder="למשל: רגישות בכתף ימין">${esc(f.details)}</textarea></label>
+    <label class="field"><span>יש כאב, פציעה, ניתוח, הריון או כל דבר אחר ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details">${esc(f.details)}</textarea></label>
     <div id="minor-box" style="${minor ? '' : 'display:none'}"><div class="card stack"><h3>את מתחת לגיל 18</h3><p class="small muted">צריך גם הסכמה של אחד ההורים.</p>
       <label class="field"><span>שם ההורה</span><input class="input" id="f-parent" value="${esc(f.parent)}"></label>
       <label class="check"><input type="checkbox" id="f-pok" ${f.pok ? 'checked' : ''}> <span>ההורה מאשר/ת את השתתפותי בשיעורי ריקוד</span></label></div></div>

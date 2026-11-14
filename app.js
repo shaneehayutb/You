@@ -708,7 +708,7 @@ function vHealth() {
         <input type="file" accept="image/*,application/pdf" hidden data-cert="form"></label>` : ''}
 
     <h2 style="margin-top:22px">כדי ששחר תתאים לך את התנועה</h2>
-    <label class="field"><span>יש כאב, פציעה, ניתוח, הריון או כל דבר אחר ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details" placeholder="למשל: רגישות בכתף ימין">${esc(f.details)}</textarea></label>
+    <label class="field"><span>יש כאב, פציעה, ניתוח, הריון או כל דבר אחר ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details">${esc(f.details)}</textarea></label>
 
     ${minor ? `<div class="card stack"><h3>את מתחת לגיל 18</h3><p class="small muted">צריך גם הסכמה של אחד ההורים.</p>
       <label class="field"><span>שם ההורה</span><input class="input" id="f-parent" value="${esc(f.parent)}"></label>
