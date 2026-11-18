@@ -30,7 +30,6 @@ const CONFIG = {
   healthValidYears: 2, // הצהרת בריאות מתחדשת כל שנתיים (כמו בטופס הרשמי)
   products: [
     { id: 'single', name: 'שיעור בודד',  credits: 1,  price: 75,  days: 21,  note: 'בתוקף 21 יום', kind: 'dance' },
-    { id: 'trial_dance', name: 'שיעור ניסיון ריקוד', credits: 1, price: 75, days: 30, note: 'פעם אחת · לשיעור ריקוד', kind: 'dance', trial: true },
     { id: 'trial_flex',  name: 'שיעור ניסיון גמישות', credits: 1, price: 60, days: 30, note: 'פעם אחת · לשיעור גמישות', kind: 'flex', trial: true },
     { id: 'five',   name: 'כרטיסיית 5',  credits: 5,  price: 350, days: 60,  payments: 2, kind: 'dance', note: '70 ₪ לשיעור · בתוקף חודשיים' },
     { id: 'ten',    name: 'כרטיסיית 10', credits: 10, price: 670, days: 120, payments: 3, kind: 'dance', note: '67 ₪ לשיעור · בתוקף 4 חודשים', featured: true },
