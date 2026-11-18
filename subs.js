@@ -373,14 +373,21 @@
     return cur.map(x => { const nx = rows.find(y => y.replaces === x.id && y.status === 'active' && y.startAt > t);
       return nx ? { ...x, endsAt: null, pending: { plan: nx.plan, day: nx.day, slots: nx.slots } } : x; });
   }
+  const openSlots = new Set();   // אילו שיעורים פתוחים ברשימת המנויים (בניהול)
   function adminSubsBlock() {
     const list = adminSubs(), active = list.filter(s => !s.endsAt && s.status !== 'failed');
     const mrr = active.reduce((t, s) => t + plan(s.plan).price, 0);
     const week = ['flex', 'sun', 'wed'].map(k => {
       const si = slotInfo(k); if (!si.seriesId) return '';
       const c = S.classes.find(x => x.seriesId === si.seriesId && x.start > now() && !x.cancelled);
-      const n = list.filter(s => s.slots.includes(k)).length;
-      return c ? `<div class="list-row"><span class="grow">${fmtDay(c.start)} ${slotTime(k)}<span class="tiny muted" style="display:block">${esc(si.title)}</span></span><b>${n}/${si.cap} מנויות</b></div>` : '';
+      const who = list.filter(s => s.slots.includes(k)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'he'));
+      const open = openSlots.has(k);
+      return c ? `<button class="list-row plain" style="width:100%;text-align:right" data-act="sbSlotToggle" data-k="${k}" aria-expanded="${open}">
+          <span class="grow">${fmtDay(c.start)} ${slotTime(k)}<span class="tiny muted" style="display:block">${esc(si.title)}</span></span>
+          <b>${who.length}/${si.cap} מנויות</b><span class="muted" style="margin-inline-start:8px">${open ? '▴' : '▾'}</span></button>
+        ${open ? `<div style="padding:0 6px 10px">${who.map(s => `<button class="list-row plain" style="width:100%;text-align:right;padding:8px 0" ${s.userId ? `data-act="adStudent" data-id="${s.userId}"` : ''}>
+            <span class="grow">${esc(s.name || '—')}<span class="tiny muted" style="display:block">${esc(plan(s.plan).name)}${s.endsAt ? ` · מסתיים ${fullDate(s.endsAt)}` : ''}${s.status === 'failed' ? ' · החיוב לא עבר' : ''}</span></span>
+            ${s.userId ? '<span class="muted">‹</span>' : ''}</button>`).join('') || '<p class="small muted" style="padding:8px 0">עוד אין מנויות בשיעור הזה</p>'}</div>` : ''}` : '';
     }).join('');
     return `<div class="section-title"><h2>מנויים</h2><a href="#" data-act="sbAdminList">לכל המנויות</a></div>
       ${LIVE && !S.subsEnabled ? '<div class="note">המנויים עוד כבויים ללקוחות. רק את רואה אותם כרגע.</div>' : ''}
@@ -508,6 +515,7 @@
         if (PREVIEW && spotsLeft(cls(b.classId)) <= 0) return toast('השיעור כבר מלא');
         return act(() => API.subUnskip(id), () => { b.status = 'booked'; }, 'מעולה, את בפנים 🤍').then(ok => ok && openSheet({ type: 'sbManage' })); }
       case 'sbClose': closeSheet(); return render();
+      case 'sbSlotToggle': { const k = ds.k; openSlots.has(k) ? openSlots.delete(k) : openSlots.add(k); return render(); }
       case 'sbAdminList': return openSheet({ type: 'sbAdminList' });
       case 'sbAdminEdit': return openSheet({ type: 'sbAdminEdit', i: +ds.i });
       case 'sbAdminCancel': {
