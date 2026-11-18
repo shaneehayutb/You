@@ -383,13 +383,17 @@
 
   /* ---------- פעולות ---------- */
   let working = false;
-  async function startPay(action, id, day, mode) {
+  async function startPay(action, id, day, mode, btn) {
     if (working) return; working = true;
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'פותחות את דף התשלום…'; }
     try {
       const r = await API.subOrder(action, id, day || '');
       payDone = false;
       openSheet({ type: 'pay', id: `sub:${id}:${mode}`, uniqId: r.uniqId, url: r.url });
-    } catch (e) { toast(errHe(e) + (e?.detail ? ' · ' + e.detail : '')); }
+    } catch (e) {
+      toast(errHe(e) + (e?.detail ? ' · ' + e.detail : ''));
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; }
+    }
     finally { working = false; }
   }
   document.addEventListener('click', e => {
@@ -425,14 +429,14 @@
           S.sub = { plan: id, day, slots: slotsOf(p, day), startAt: now(), renewAt: addMonth(now()), endsAt: null, pending: null, status: 'active' };
           previewSync(); render(); return openSheet({ type: 'sbWelcome' });
         }
-        return startPay('subCreate', id, day, 'new');
+        return startPay('subCreate', id, day, 'new', el);
       }
       case 'sbManage': return openSheet({ type: 'sbManage' });
       case 'sbChange': return openSheet({ type: 'sbChange' });
       case 'sbChangeOk': {
         const p = plan(id), s = sub();
         if (PREVIEW) { s.pending = { plan: id, day: ds.day || null, slots: slotsOf(p, ds.day || null) }; previewSync(); render(); openSheet({ type: 'sbManage' }); return toast(`מ-${fullDate(s.renewAt)} המנוי יעבור ל${p.name}`); }
-        return startPay('subChange', id, ds.day, 'change');
+        return startPay('subChange', id, ds.day, 'change', el);
       }
       case 'sbCancelAsk': return openSheet({ type: 'sbCancel' });
       case 'sbCancelOk': {
