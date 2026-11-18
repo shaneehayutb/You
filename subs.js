@@ -109,7 +109,7 @@
       ${PLANS.map(p => `<div class="card product ${p.best ? 'featured' : ''}" data-act="sbPick" data-id="${p.id}" role="button">
         ${p.best ? '<span class="badge">הכי משתלם</span>' : ''}
         <div class="count" style="font-size:20px">${p.emoji}</div>
-        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">${esc(p.sub)} · כ-${perClass(p)}₪ לשיעור</p></div>
+        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">${esc(p.sub)}</p></div>
         <div class="price">${p.price}₪<small class="tiny muted" style="display:block;font-weight:400">לחודש</small></div></div>`).join('')}
       <p class="small muted" style="margin-top:6px">רוצה רק לנסות?</p>`}
       <div class="card product" data-act="pick" data-id="${single.id}" role="button">
