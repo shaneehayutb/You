@@ -797,7 +797,7 @@ function classRow(c, opts = {}) {
   const b = myBooking(c);
   const left = spotsLeft(c);
   let tag = '';
-  if (c.cancelled) tag = '<span class="tag warn">בוטל</span>';
+  if (c.cancelled) tag = `<span class="tag warn">${c.note && c.note.startsWith('חג') ? 'בוטל · חג' : 'בוטל'}</span>`;
   else if (b) tag = '<span class="tag green">רשומה ✓</span>';
   else if (c.start < now()) tag = '<span class="tag">הסתיים</span>';
   else if (left <= 0) tag = '<span class="tag">מלא</span>';
