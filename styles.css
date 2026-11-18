@@ -8,11 +8,11 @@
   --line: #EDE0D2;
   --blush: #F6DDD4;
   --rose: #E4A797;
-  --rose-deep: #C4705F;
+  --rose-deep: #A55A4B;
   --sage: #CCD6BF;
   --sage-deep: #7F9470;
   --plum: #4A2E35;
-  --muted: #8E7672;
+  --muted: #7F6A66;
   --shadow: 0 10px 30px -12px rgba(122, 72, 60, .22);
   --radius: 22px;
   --serif: 'Playpen Sans Hebrew', 'Assistant', cursive;
@@ -438,3 +438,11 @@ label.btn { cursor: pointer; }
 .task .task-check { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--rose-deep, #b07068); background: transparent; color: #fff; font-size: 14px; line-height: 1; flex: none; margin-inline-end: 10px; }
 .task.done .task-check { background: var(--rose-deep, #b07068); }
 .task.done .grow { text-decoration: line-through; opacity: .55; }
+
+/* ---------- נגישות ---------- */
+:focus-visible { outline: 3px solid var(--plum); outline-offset: 2px; border-radius: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.sr-only:focus { position: static; width: auto; height: auto; margin: 0 0 8px; clip: auto; white-space: normal; }
+.sheet:focus { outline: none; }
+.note.warn .link, .notice .link { color: var(--plum); text-decoration: underline; }
+.w-tagline { color: #8A4A3D; }

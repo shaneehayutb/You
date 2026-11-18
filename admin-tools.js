@@ -314,6 +314,7 @@ function shStudent({ id }) {
     ${s.email ? `<div class="row" style="gap:8px;margin-top:-6px"><span class="tiny muted">מייל לקבלות:</span>
       <span class="small" dir="ltr" style="user-select:all;word-break:break-all">${esc(s.email)}</span>
       <button class="btn sm ghost" data-act="adCopy" data-v="${esc(s.email)}">העתקה</button></div>` : ''}
+    ${LIVE ? `<button class="btn block soft" data-act="adFile" data-id="${s.id}">📄 תיק לקוחה: הצהרת בריאות, תקנון וחתימות</button>` : ''}
     <div class="row" style="gap:12px">
       <div class="card grow center" style="margin:0"><p class="muted small">שיעורים שרקדה</p><h2>${s.attended || 0}</h2></div>
       <div class="card grow center" style="margin:0"><p class="muted small">שיעור אחרון</p><h2 style="font-size:20px">${s.lastAt ? fmtDate(s.lastAt) : '—'}</h2></div>
@@ -321,7 +322,8 @@ function shStudent({ id }) {
 
     <h3>צילומים</h3>
     <div class="card" style="margin:0"><div class="tags">${photoBadge(s.photo) || '<span class="tag green">📷 מאשרת צילום ושיתוף</span>'}</div>
-      ${LIVE && !s.termsAt ? '<p class="tiny muted" style="margin-top:6px">עוד לא סיימה את ההרשמה (לא אישרה תקנון)</p>' : ''}</div>
+      ${LIVE && !s.termsAt ? '<p class="tiny muted" style="margin-top:6px">עוד לא סיימה את ההרשמה (לא אישרה תקנון)</p>' : ''}
+      ${LIVE && s.termsAt && S.termsVersion && s.termsAt < S.termsVersion ? '<p class="tiny muted" style="margin-top:6px">עוד לא אישרה את התקנון החדש</p>' : ''}</div>
 
     <h3>בריאות</h3>
     <div class="card" style="margin:0">${h ? `<div class="tags">${healthBadges(h) || '<span class="tag green">ללא הערות</span>'}</div>
@@ -677,7 +679,57 @@ function shSales({ m: sel }) {
   </div>`;
 }
 
-window.EXTRA_SHEETS = { intakes: shIntakes, sales: shSales, revenue: shRevenue, adminClass: shAdminClass2, editClass: shEditClass, broadcast: shBroadcast, students: shStudents, student: shStudent };
+
+/* ---------- תיק לקוחה: על מה חתמה ומתי ---------- */
+const fdt = t => { const d = new Date(t); return `${fmtDate(d)}.${String(d.getFullYear()).slice(2)} · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`; };
+function shClientFile({ id }) {
+  const s = students().find(x => x.id === id), f = S.clientFile?.[id];
+  const back = `<button class="link small" data-act="adStudent" data-id="${id}" style="align-self:flex-start">→ חזרה ל${esc(s?.name || 'לקוחה')}</button>`;
+  if (!f) return `<div class="stack">${back}<p class="muted">טוען…</p></div>`;
+  const { prof, hs, subs, forms } = f;
+  const yn = v => v === true ? '<b style="color:var(--rose-deep)">כן</b>' : v === false ? 'לא' : (typeof v === 'string' && v.trim()) ? `<b>${esc(v)}</b>` : '—';
+  const health = hs.map((h, i) => `<div class="card" style="margin:0">
+      <div class="row between"><b>${i === 0 ? 'הצהרת בריאות' : 'הצהרה קודמת'}</b>${new Date(h.valid_until) > new Date() && i === 0 ? '<span class="tag green">בתוקף</span>' : '<span class="tag">לא בתוקף</span>'}</div>
+      <p class="small" style="margin-top:6px">✍️ חתמה: <b>${esc(h.signature)}</b></p>
+      <p class="tiny muted">נחתמה ב-${fdt(h.signed_at)} · בתוקף עד ${fmtDate(new Date(h.valid_until))}.${String(new Date(h.valid_until).getFullYear()).slice(2)}</p>
+      ${i === 0 && prof?.parent_name ? `<p class="small">הסכמת הורה: <b>${esc(prof.parent_name)}</b></p>` : ''}
+      <details style="margin-top:8px"><summary class="small">כל התשובות</summary>
+        <div class="tiny" style="line-height:1.8;margin-top:6px">${CONFIG.healthQuestions.map((q, k) => `<div>${q.g ? esc(q.g) + ' ' : ''}${esc(q.q)} ${yn((h.answers || [])[k])}</div>`).join('')}
+        <p class="muted" style="margin-top:6px">להתאמת התנועה:</p>${CONFIG.danceQuestions.map(q => `<div>${esc(q.q)} ${yn((h.dance || {})[q.k])}</div>`).join('')}</div></details>
+      ${h.details ? `<p class="small" style="margin-top:6px">📝 ${esc(h.details)}</p>` : ''}
+      ${h.needs_cert ? (h.cert_path ? `<p class="small" style="margin-top:6px">✓ אישור רפואי הועלה ב-${fdt(h.cert_uploaded_at)} <button class="btn sm ghost" data-act="adCertView" data-v="${esc(h.cert_path)}">לצפייה</button></p>`
+        : '<p class="small" style="margin-top:6px;color:var(--rose-deep)">צריך אישור רפואי, עוד לא הועלה</p>') : ''}
+    </div>`).join('') || '<div class="card muted small" style="margin:0">עוד לא מילאה הצהרת בריאות</div>';
+  const tAt = prof?.terms_accepted_at && Date.parse(prof.terms_accepted_at);
+  const PLAN = id => (S.subPlans || []).find(p => p.id === id)?.name || id;
+  return `<div class="stack">${back}
+    <h1>📄 תיק לקוחה</h1>
+    <p class="muted small">${esc(prof?.full_name || s?.name || '')} · נרשמה לאפליקציה ב-${prof?.created_at ? fdt(prof.created_at) : '—'}</p>
+
+    <h3>בריאות</h3>${health}
+
+    <h3>תקנון ומדיניות פרטיות</h3>
+    <div class="card" style="margin:0">${tAt ? `<p class="small">✓ אישרה ב-<b>${fdt(tAt)}</b></p>
+      <p class="tiny muted">${S.termsVersion ? (tAt >= S.termsVersion ? 'אישרה את התקנון החדש' : '<b style="color:var(--rose-deep)">אישרה את התקנון הקודם. עוד לא אישרה את החדש</b>') : 'התקנון שהיה בתוקף באותו יום'}</p>
+      <button class="link small" data-act="legal" data-id="cancel">לקריאת התקנון ‹</button>` : '<p class="small muted">עוד לא אישרה תקנון</p>'}</div>
+
+    <h3>צילומים</h3>
+    <div class="card" style="margin:0"><p class="small">${prof?.photo_consent === 'no' ? '🚫 לא מצטלמת' : prof?.photo_consent ? '📷 מאשרת צילום ושיתוף' : 'עוד לא בחרה'}</p>
+      ${prof?.photo_consent_at ? `<p class="tiny muted">נבחר ב-${fdt(prof.photo_consent_at)}</p>` : ''}</div>
+
+    ${subs.length ? `<h3>מנוי</h3>${subs.map(x => `<div class="card" style="margin:0">
+      <p class="small"><b>${esc(PLAN(x.plan_id))}</b> · ${x.price_ils}₪ לחודש</p>
+      <p class="tiny muted">✓ אישרה את תנאי המנוי וחיוב חודשי אוטומטי ב-${fdt(x.created_at)}</p>
+      ${x.started_at ? `<p class="tiny muted">התחיל ב-${fdt(x.started_at)}</p>` : ''}
+      ${x.cancelled_at ? `<p class="tiny muted">בוטל ב-${fdt(x.cancelled_at)}${x.ends_at ? ` · פעיל עד ${fmtDate(new Date(x.ends_at))}` : ''}</p>` : ''}</div>`).join('')}` : ''}
+
+    ${forms.length ? `<h3>טופס מהאתר</h3>${forms.map(x => `<div class="card" style="margin:0">
+      <p class="small">✍️ חתמה: <b>${esc(x.signature)}</b> · ${fdt(x.created_at)}</p>
+      <button class="link small" data-act="adIntake" data-id="${x.id}">לטופס המלא ‹</button></div>`).join('')}` : ''}
+  </div>`;
+}
+
+window.EXTRA_SHEETS = { intakes: shIntakes, clientFile: shClientFile, sales: shSales, revenue: shRevenue, adminClass: shAdminClass2, editClass: shEditClass, broadcast: shBroadcast, students: shStudents, student: shStudent };
 
 /* ---------- פעולות ---------- */
 const reopen = () => { renderSheet(); render(); };
@@ -801,7 +853,10 @@ document.addEventListener('click', e => {
       const p = students().find(x => x.id === id).purchases.find(x => x.id === pid);
       const left = p.price - (p.refunded || 0);
       const mark = el.dataset.mark === '1';
-      const v = prompt(mark ? `כמה זיכית באתר של תקבול? (עד ${left} ₪)\nהאפליקציה רק תעדכן את ההכנסות, בלי לזכות שוב.` : `סכום הזיכוי בשקלים (עד ${left} ₪).\nלזיכוי מלא השאירי ${left}.`, String(left));
+      // ביטול בתוך 14 יום: המחיר פחות דמי ביטול (5% או 100 ₪, הנמוך מביניהם)
+      const net = Math.round((p.price - Math.min(p.price * 0.05, 100)) * 100) / 100;
+      const def = !p.refunded && !mark ? net : left;
+      const v = prompt(mark ? `כמה זיכית באתר של תקבול? (עד ${left} ₪)\nהאפליקציה רק תעדכן את ההכנסות, בלי לזכות שוב.` : `סכום הזיכוי בשקלים (עד ${left} ₪).\nביטול בתוך 14 יום: ${net} ₪ (אחרי דמי ביטול). זיכוי מלא: ${left}.`, String(def));
       if (v == null) return;
       const amount = Math.round(+String(v).replace(/[^\d.]/g, '') * 100) / 100;
       if (!(amount > 0) || amount > left) return toast(`הסכום צריך להיות בין 1 ל-${left} ₪`);
@@ -815,6 +870,18 @@ document.addEventListener('click', e => {
     }
     case 'adIntakes': intakesEnsureLoaded(true); return openSheet({ type: 'intakes' });
     case 'adIntake': return openSheet({ type: 'intakes', id });
+    case 'adFile': {
+      if (!LIVE) return toast('בתצוגת הדגמה אין תיק לקוחה');
+      openSheet({ type: 'clientFile', id });
+      API.clientFile(id).then(r => { (S.clientFile ||= {})[id] = r; if (ui.sheet?.type === 'clientFile') renderSheet(); })
+        .catch(e => toast(errHe(e)));
+      return;
+    }
+    case 'adCertView': {
+      const w = window.open('', '_blank');
+      API.certUrl(el.dataset.v).then(u => { if (w) w.location = u; else location.href = u; }).catch(e => { w?.close(); toast(errHe(e)); });
+      return;
+    }
     case 'adIntakeDone': {
       const v = el.dataset.v === '1', x = (S.intakes || []).find(i => i.id === id);
       return API.intakeHandled(id, v).then(() => { if (x) x.handled = v; render(); openSheet({ type: 'intakes' }); toast(v ? 'סומן כטופל ✓' : 'הוחזר לחדשים'); }).catch(err => toast(errHe(err)));

@@ -29,10 +29,10 @@ const CONFIG = {
   horizonDays: 60,     // שיעורים קבועים מוצגים תמיד חודשיים קדימה
   healthValidYears: 2, // הצהרת בריאות מתחדשת כל שנתיים (כמו בטופס הרשמי)
   products: [
-    { id: 'single', name: 'שיעור בודד',  credits: 1,  price: 75,  days: 21,  note: 'בתוקף 21 יום', kind: 'dance' },
+    { id: 'single', name: 'שיעור בודד',  credits: 1,  price: 75,  days: 21,  note: 'לשיעור ריקוד · בתוקף 21 יום', kind: 'dance' },
     { id: 'trial_flex',  name: 'שיעור ניסיון גמישות', credits: 1, price: 60, days: 30, note: 'פעם אחת · לשיעור גמישות', kind: 'flex', trial: true },
-    { id: 'five',   name: 'כרטיסיית 5',  credits: 5,  price: 350, days: 60,  payments: 2, kind: 'dance', note: '70 ₪ לשיעור · בתוקף חודשיים' },
-    { id: 'ten',    name: 'כרטיסיית 10', credits: 10, price: 670, days: 120, payments: 3, kind: 'dance', note: '67 ₪ לשיעור · בתוקף 4 חודשים', featured: true },
+    { id: 'five',   name: 'כרטיסיית 5',  credits: 5,  price: 350, days: 60,  payments: 2, kind: 'dance', note: '70 ₪ לשיעור · בתוקף חודשיים', hidden: true },
+    { id: 'ten',    name: 'כרטיסיית 10', credits: 10, price: 670, days: 120, payments: 3, kind: 'dance', note: '67 ₪ לשיעור · בתוקף 4 חודשים', hidden: true },
   ],
   milestones: [
     { n: 1,  label: 'הצעד הראשון' },
@@ -76,7 +76,7 @@ const OTHER_NAMES = ['נועה','מאיה','תמר','יעל','שירה','מיכ�
 
 /** המערכת הקבועה של שחר: כל שורה = שיעור שחוזר כל שבוע */
 const SEED_SERIES = [
-  { id: 'sr1', dow: 0, h: 20, m: 0, title: 'נשיות בקצב', dur: 60, cap: 12 },
+  { id: 'sr1', dow: 0, h: 20, m: 0, title: 'שיעור ריקוד', dur: 60, cap: 12 },
 ];
 
 /* ---------------- time helpers ---------------- */
@@ -235,7 +235,9 @@ const pickPurchase = c => activePurchases().find(p => p.expiresAt > c.start && (
 // שיעור ניסיון שכבר נקנה — לא מוצג שוב
 const trialUsed = id => S.purchases.some(p => p.productId === id);
 const product = id => CONFIG.products.find(p => p.id === id);
-const isOnboarded = () => S.user && S.user.health && S.user.termsAt;
+// תקנון חדש שפורסם אחרי שהלקוחה אישרה — צריך לאשר שוב (שחר לא)
+const termsOutdated = () => !!(S.user?.termsAt && S.termsVersion && S.user.termsAt < S.termsVersion && !S.isAdmin);
+const isOnboarded = () => S.user && S.user.health && S.user.termsAt && !termsOutdated();
 const needsCertMissing = () => !!(S.user?.health?.needsCert && !S.user.health.cert);
 /** שיעורים שהיא הייתה בהם, מהחדש לישן */
 const attended = () => S.bookings
@@ -513,8 +515,8 @@ function render() {
     : [['home', 'בית', ICON.home], ['schedule', 'מערכת', ICON.cal], ['journey', 'המסע', ICON.journey], ['me', 'פרופיל', ICON.me]];
   if (!tabs.some(t => t[0] === ui.tab)) ui.tab = tabs[0][0];
   const view = { home: S.guest ? vGuestHome : vHome, schedule: vSchedule, journey: vJourney, me: vMe, admin: vAdmin, clients: () => vClients() }[ui.tab]();
-  $app.innerHTML = view + `<nav class="nav">${tabs.map(([id, label, icon]) =>
-    `<button data-act="tab" data-id="${id}" class="${ui.tab === id ? 'active' : ''}">${icon}<span>${label}</span></button>`).join('')}</nav>`;
+  $app.innerHTML = `<main id="main">${view}</main>` + `<nav class="nav" aria-label="תפריט ראשי">${tabs.map(([id, label, icon]) =>
+    `<button data-act="tab" data-id="${id}" class="${ui.tab === id ? 'active' : ''}"${ui.tab === id ? ' aria-current="page"' : ''}>${icon}<span>${label}</span></button>`).join('')}</nav>`;
   hydrateVideos();
 }
 
@@ -593,7 +595,7 @@ function routeAfterSync() {
   if (S.isAdmin) { S.admin = true; return go({ screen: null, tab: 'admin' }); }
   if (u.age == null) { ui.form = { ...ui.form, auth: u.auth, name: ui.form.name || u.name, email: u.email || ui.form.email }; return go({ screen: 'meet' }); }
   if (!u.health) return go({ screen: 'health' });
-  if (!u.termsAt) return go({ screen: 'terms' });
+  if (!u.termsAt || termsOutdated()) return go({ screen: 'terms' });
   go({ screen: null, tab: S.admin ? 'admin' : 'home' });
   // אם כבר הדליקה התראות בעבר — מוודאים שהטלפון רשום (בלי לשאול שוב)
   if (LIVE && (S.prefs.remind24 || S.prefs.remind2 || S.prefs.notify)) API.enablePush(false);
@@ -727,46 +729,83 @@ function vHealth() {
 }
 
 function vTerms() {
-  return `${steps(5)}
+  const again = !!S.user?.termsAt;   // כבר אישרה פעם — זה תקנון מעודכן
+  return `${again ? '' : steps(5)}
   <div class="stack fade-in">
-    <p class="hand" style="font-size:20px;color:var(--rose-deep)">ועוד דבר קטן אחרון…</p>
-    <h1>התקנון</h1>
-    <p class="muted">קצר וברור, מבטיחה.</p>
-    <div class="card terms">
-      <h3>שיעורים ותוקף</h3>
-      <ul>
-        <li>שיעור בודד — בתוקף 21 יום.</li>
-        <li>כרטיסיית 5 — בתוקף חודשיים. כרטיסיית 10 — בתוקף 4 חודשים.</li>
-        <li>הכרטיסייה אישית ואינה ניתנת להעברה.</li>
-        <li>אפשר לבטל רכישה תוך 14 יום, כל עוד לא השתמשת באף שיעור ממנה, בניכוי דמי ביטול כפי שהחוק מאפשר. אחרי זה אין החזר כספי, והשיעורים שנשארו מחכים לך עד סוף התוקף.</li>
-      </ul>
-      <h3>ביטולים</h3>
-      <ul>
-        <li>ביטול עד ${CONFIG.cancelHours} שעות לפני השיעור — השיעור חוזר לכרטיסייה במלואו.</li>
-        <li>ביטול בפחות מ-${CONFIG.cancelHours} שעות לפני השיעור — השיעור נספר מהכרטיסייה.</li>
-        <li>אי-הגעה או איחור — השיעור נספר מהכרטיסייה.</li>
-        <li>שיעור שבוטל בזמן חוזר לכרטיסייה, ולא כהחזר כספי.</li>
-        <li>אם שחר מבטלת שיעור — הוא חוזר לכרטיסייה של כל המשתתפות.</li>
-      </ul>
-      <h3>צילום</h3>
-      <ul>
-        <li>מותר לצלם את עצמך בשיעור. סרטונים ותמונות שמשתתפות מצלמות בעצמן, והפרסום שלהם, הם באחריותן בלבד.</li>
-      </ul>
-      <h3>בריאות ואחריות</h3>
-      <ul>
-        <li>ההשתתפות באחריותך ובהתאם להצהרת הבריאות שמילאת.</li>
-        <li>יש לעדכן על כל שינוי במצב הבריאותי.</li>
-      </ul>
-    </div>
-    <div class="card stack" style="margin-top:6px">
+    ${again ? `<h1>התקנון התעדכן 🤍</h1>
+    <p class="muted">עדכנתי את התקנון לקראת המנויים החודשיים. כדי להמשיך להירשם לשיעורים, צריך לקרוא ולאשר אותו שוב.</p>`
+    : `<p class="hand" style="font-size:20px;color:var(--rose-deep)">ועוד דבר קטן אחרון…</p>
+    <h1>צילומים ותקנון</h1>
+    <p class="muted">כל מה שחשוב לדעת, במקום אחד.</p>`}
+    ${again && S.user?.photo ? '' : `<div class="card stack" style="margin-top:6px">
       <h3>צילומים בשיעורים 📷</h3>
       <p class="small">${PHOTO_TEXT}</p>
       ${photoChoice(ui.form.photo, 'photoForm')}
       <p class="tiny muted">${PHOTO_FINE}${(S.user?.age || 99) < 18 ? ' מתחת לגיל 18: ההורה שאישר/ה את ההשתתפות מאשר/ת גם את הבחירה הזו.' : ''}</p>
+    </div>`}
+    <div class="card terms">
+      <h3>מה אפשר לרכוש</h3>
+      <ul>
+        <li><b>מנוי חודשי:</b> מקום קבוע בשיעורים לפי המסלול שבחרת. החיוב אוטומטי בכרטיס האשראי, פעם בחודש, עד שמבטלים.</li>
+        <li><b>שיעור ריקוד בודד:</b> לשיעור ריקוד אחד, בתוקף 21 יום.</li>
+        <li><b>שיעור ניסיון גמישות:</b> פעם אחת בלבד, לשיעור גמישות אחד, בתוקף 30 יום.</li>
+        <li>הרכישה אישית ואינה ניתנת להעברה.</li>
+      </ul>
+      <h3>המנוי</h3>
+      <ul>
+        <li>המקום שלך נשמר אוטומטית בכל שיעור במסלול. לא צריך להירשם כל פעם.</li>
+        <li>אפשר להחליף את יום הריקוד בכל זמן, לפי המקום הפנוי.</li>
+        <li><b>שינוי מסלול:</b> אפשר לעבור לכל מסלול אחר, דרך האפליקציה.</li>
+        <li>מעבר למסלול יקר יותר נכנס מיד. משלמים עכשיו רק את ההפרש היחסי לימים שנשארו עד יום החידוש, ומיום החידוש החיוב לפי המסלול החדש.</li>
+        <li>מעבר למסלול זול יותר נכנס ביום החידוש הבא.</li>
+        <li><b>ביטול המנוי:</b> בכל רגע, לבד, דרך האפליקציה (במסך ניהול המנוי). אחרי הביטול אין חיובים נוספים, והמנוי פעיל עד יום החידוש הקרוב. על חיוב שכבר בוצע אין החזר, חוץ מביטול בתוך 14 יום (ראו בהמשך).</li>
+        <li>נתקלת בבעיה בביטול? אפשר לכתוב לשחר בוואטסאפ.</li>
+        <li>אם החיוב החודשי לא עובר, נעדכן אותך. עד שהתשלום מסודר, המקום בשיעורים הבאים לא נשמר.</li>
+        <li>במקרים מיוחדים, למשל בעיה רפואית, אפשר לפנות לשחר.</li>
+      </ul>
+      <h3>ביטול רכישה</h3>
+      <ul>
+        <li>תוך 14 יום מהרכישה, ולפני שהשתתפת בשיעור: אפשר לבטל ולקבל החזר, בניכוי דמי ביטול של 5% או 100 ₪, הנמוך מביניהם.</li>
+        <li><b>במנוי:</b> מבטלים לבד דרך האפליקציה, וההחזר נעשה אוטומטית לכרטיס האשראי.</li>
+        <li><b>בשיעור בודד או בשיעור ניסיון:</b> כותבים לשחר בוואטסאפ.</li>
+        <li>אחרי שהשתתפת בשיעור, או אחרי 14 יום, אין החזר כספי.</li>
+      </ul>
+      <h3>כשאת לא מגיעה</h3>
+      <ul>
+        <li><b>במנוי:</b> אם לא תוכלי להגיע, לוחצים "לא אגיע" באפליקציה כדי לפנות את המקום לאחרות. אין החזר או זיכוי על שיעור שלא הגעת אליו.</li>
+        <li><b>בשיעור בודד או בכרטיסייה:</b> ביטול עד 12 שעות לפני השיעור, השיעור חוזר אלייך (לא כהחזר כספי). ביטול מאוחר יותר, אי-הגעה או איחור, השיעור נספר.</li>
+        <li>אם שחר מבטלת שיעור, כל הנרשמות מקבלות הודעה באפליקציה. מי שנרשמה עם שיעור בודד או כרטיסייה, השיעור חוזר אליה.</li>
+      </ul>
+      <h3>חגים</h3>
+      <ul>
+        <li>בחגים אין שיעורים, ואין עליהם החזר או זיכוי. המחיר החודשי של המנוי לא משתנה.</li>
+        <li>על כל יום בלי שיעור בגלל חג נודיע באפליקציה לפחות 30 יום מראש.</li>
+      </ul>
+      <h3>כרטיסיות שכבר נרכשו</h3>
+      <ul>
+        <li>כרטיסייה שנרכשה לפני המעבר למנויים ממשיכה לעבוד עד סוף התוקף שלה, לפי התנאים שבהם נרכשה (כרטיסיית 5: חודשיים, כרטיסיית 10: 4 חודשים).</li>
+      </ul>
+      <h3>צילום</h3>
+      <ul>
+        <li>מותר לצלם את עצמך בשיעור. נבקש לא לצלם משתתפות אחרות בלי הסכמתן.</li>
+        <li>סרטונים ותמונות שמשתתפות מצלמות ומפרסמות, כולל כאלה שרואים בהם משתתפות אחרות, גם ברקע, הם באחריות מי שצילמה ופרסמה בלבד, ולא באחריות שחר או הסטודיו.</li>
+        <li>אם מישהי פרסמה תמונה או סרטון שרואים בו אותך ואת לא מסכימה, אפשר לפנות אליה ישירות ולבקש שתוריד.</li>
+      </ul>
+      <h3>בריאות ואחריות</h3>
+      <ul>
+        <li>ההשתתפות באחריותך ובהתאם להצהרת הבריאות שמילאת.</li>
+        <li>יש לעדכן את שחר על כל שינוי במצב הבריאותי, לפני השיעור.</li>
+      </ul>
+      <h3>שינויים</h3>
+      <ul>
+        <li>שחר יכולה לעדכן את התקנון, את מערכת השעות ואת המחירים. על שינוי חשוב נודיע באפליקציה מראש.</li>
+        <li>מחיר של מנוי פעיל לא ישתנה בלי הודעה מראש, ותמיד אפשר לבטל.</li>
+      </ul>
     </div>
-    <p class="small" style="margin-top:4px">למסמכים המלאים: <a href="#" data-act="legal" data-id="cancel">ביטולים והחזרים</a> · <a href="#" data-act="legal" data-id="privacy">מדיניות פרטיות</a></p>
-    <label class="check"><input type="checkbox" id="f-tok"> <span>קראתי ואני מאשרת את התקנון ואת מדיניות הפרטיות</span></label>
-    <button class="btn block" data-act="terms">סיום והמשך לרכישה</button>
+    <p class="small" style="margin-top:4px">למסמכים המלאים: <a href="#" data-act="legal" data-id="cancel">תקנון וביטולים</a> · <a href="#" data-act="legal" data-id="privacy">מדיניות פרטיות</a></p>
+    <label class="check"><input type="checkbox" id="f-tok"> <span>קראתי ואני מאשרת את <b>התקנון</b></span></label>
+    <label class="check"><input type="checkbox" id="f-tpriv"> <span>קראתי ואני מאשרת את <b>מדיניות הפרטיות</b></span></label>
+    <button class="btn block" data-act="terms">${again ? 'אישור והמשך' : 'סיום והמשך לרכישה'}</button>
   </div>`;
 }
 
@@ -776,7 +815,7 @@ function punchCard() {
   const total = totalCredits();
   if (!act.length) {
     return `<div class="card punch empty">
-      <p class="small muted">הכרטיסייה שלך</p>
+      <p class="small muted">השיעורים שלך</p>
       <div class="row between" style="margin-top:6px">
         <h2>עוד אין שיעורים</h2>
         <button class="btn sm" data-act="shop">לרכישת שיעורים</button>
@@ -862,27 +901,28 @@ function vGuestHome() {
     <p class="muted" style="margin:4px 0 20px">${esc(CONFIG.tagline)}</p>
     <div class="card stack">
       <h3>רוצה להצטרף לשיעור?</h3>
-      <p class="small muted">כדי להירשם לשיעורים ולרכוש כרטיסייה צריך להתחבר עם Apple או Google.</p>
+      <p class="small muted">כדי להירשם לשיעורים ולרכוש מנוי או שיעור צריך להתחבר עם Apple או Google.</p>
       <button class="btn block rose" data-act="go" data-screen="auth">התחברות והרשמה</button>
     </div>
     <div class="dir-wrap"><button class="dir-pill" data-act="directions">📍 איך מגיעים</button></div>
     <div class="section-title"><h2>השיעורים הקרובים</h2><a href="#" data-act="tab" data-id="schedule">לכל המערכת</a></div>
     ${next.length ? next.map(c => classRow(c, { showDay: true })).join('') : '<div class="card muted center">אין שיעורים בתקופה הקרובה</div>'}
     <div class="section-title"><h2>מחירים</h2><a href="#" data-act="shop">פירוט</a></div>
-    <div class="card" style="padding:4px 18px">${CONFIG.products.map(p => `<div class="list-row"><span class="grow">${esc(p.name)}<span class="tiny muted" style="display:block">${esc(p.note)}</span></span><b>${p.price}₪</b></div>`).join('')}</div>`;
+    <div class="card" style="padding:4px 18px">${(S.subPlans || []).filter(p => !p.admin_only).map(p => `<div class="list-row"><span class="grow">מנוי ${esc(p.name)}<span class="tiny muted" style="display:block">מקום קבוע כל שבוע · חיוב חודשי${p.available_from && Date.parse(p.available_from) > now() ? ` · מ-${fmtDate(Date.parse(p.available_from))}` : ''}</span></span><b>${p.price_ils}₪</b></div>`).join('')}${CONFIG.products.filter(p => !p.hidden).map(p => `<div class="list-row"><span class="grow">${esc(p.name)}<span class="tiny muted" style="display:block">${esc(p.note)}</span></span><b>${p.price}₪</b></div>`).join('')}</div>`;
 }
 
 function vGuestMe() {
   return `${header('פרופיל')}
     <div class="card stack center">
       <h3>עוד לא התחברת</h3>
-      <p class="small muted">התחברי כדי להירשם לשיעורים, לראות את הכרטיסייה שלך ולעקוב אחרי המסע שלך.</p>
+      <p class="small muted">התחברי כדי להירשם לשיעורים ולעקוב אחרי המסע שלך.</p>
       <button class="btn block rose" data-act="go" data-screen="auth">התחברות</button>
     </div>
     <div class="section-title"><h2>מסמכים</h2></div>
     <div class="card" style="padding:4px 18px">
       <button class="list-row plain" style="width:100%" data-act="legal" data-id="privacy"><span class="grow">מדיניות פרטיות</span><span class="muted">‹</span></button>
-      <button class="list-row plain" style="width:100%" data-act="legal" data-id="cancel"><span class="grow">ביטולים והחזרים</span><span class="muted">‹</span></button>
+      <button class="list-row plain" style="width:100%" data-act="legal" data-id="access"><span class="grow">הצהרת נגישות</span><span class="muted">‹</span></button>
+      <button class="list-row plain" style="width:100%" data-act="legal" data-id="cancel"><span class="grow">תקנון וביטולים</span><span class="muted">‹</span></button>
       <button class="list-row plain" style="width:100%" data-act="legal" data-id="support"><span class="grow">תמיכה ושאלות נפוצות</span><span class="muted">‹</span></button>
     </div>
     <a class="btn block soft" style="margin-top:20px" href="${typeof waLink === 'function' ? waLink(S.whatsapp || CONFIG.whatsapp) : '#'}" target="_blank" rel="noopener">💬 שאלה? כתבי לשחר בוואטסאפ</a>`;
@@ -971,14 +1011,14 @@ function vMe() {
     </div>
     ${u?.auth === 'apple' || u?.auth === 'google' ? `<p class="tiny muted" style="margin:8px 4px 0">מחוברת עם ${u.auth === 'apple' ? 'Apple' : 'Google'}</p>` : u?.auth === 'anonymous' ? '<p class="tiny muted" style="margin:8px 4px 0">חשבון בדיקה</p>' : ''}
 
-    <div class="section-title"><h2>הכרטיסיות שלי</h2><a href="#" data-act="shop">לרכישת שיעורים</a></div>
+    <div class="section-title"><h2>הרכישות שלי</h2><a href="#" data-act="shop">לרכישת שיעורים</a></div>
     ${S.purchases.length ? [...S.purchases].reverse().map(p => {
       const active = p.remaining > 0 && p.expiresAt > now();
       return `<div class="card">
         <div class="row between"><h3>${esc(p.name)}</h3>${active ? '<span class="tag green">פעילה</span>' : '<span class="tag">הסתיימה</span>'}</div>
         <p class="small muted" style="margin-top:4px">${p.remaining}/${p.credits} נותרו · בתוקף עד ${fmtDate(p.expiresAt)}</p>
       </div>`;
-    }).join('') : '<div class="card muted center">עוד אין כרטיסיות</div>'}
+    }).join('') : '<div class="card muted center">עוד אין רכישות</div>'}
 
     <div class="section-title"><h2>התראות לטלפון</h2></div>
     <p class="tiny muted" style="margin:-6px 4px 8px">כבויות עד שתדליקי. אפשר לשנות בכל רגע.</p>
@@ -997,7 +1037,8 @@ function vMe() {
       <button class="list-row plain" style="width:100%" data-act="photoSheet"><span class="grow">צילומים בשיעורים<span class="tiny muted" style="display:block">${u?.photo ? photoShort(u.photo) : 'עוד לא בחרת'}</span></span><span class="muted">‹</span></button>
       <div class="list-row"><span class="grow">תקנון</span><span class="small muted">אושר ${u?.termsAt ? fmtDate(u.termsAt) : '—'}</span></div>
       <button class="list-row plain" style="width:100%" data-act="legal" data-id="privacy"><span class="grow">מדיניות פרטיות</span><span class="muted">‹</span></button>
-      <button class="list-row plain" style="width:100%" data-act="legal" data-id="cancel"><span class="grow">ביטולים והחזרים</span><span class="muted">‹</span></button>
+      <button class="list-row plain" style="width:100%" data-act="legal" data-id="access"><span class="grow">הצהרת נגישות</span><span class="muted">‹</span></button>
+      <button class="list-row plain" style="width:100%" data-act="legal" data-id="cancel"><span class="grow">תקנון וביטולים</span><span class="muted">‹</span></button>
       <button class="list-row plain" style="width:100%" data-act="legal" data-id="support"><span class="grow">תמיכה ושאלות נפוצות</span><span class="muted">‹</span></button>
     </div>
 
@@ -1092,17 +1133,23 @@ const $sheet = document.getElementById('sheet-root');
 })();
 
 function renderSheet() {
-  if (!ui.sheet) { $sheet.innerHTML = ''; return; }
+  if (!ui.sheet) { $sheet.innerHTML = ''; if (lastFocus?.isConnected) lastFocus.focus(); lastFocus = null; return; }
+  const opening = !$sheet.firstChild;
+  if (opening) lastFocus = document.activeElement;
   const s = ui.sheet;
   const body = ({ ...{ class: shClass, shop: shShop, checkout: shCheckout, pay: shPay, lateCancel: shLateCancel, cert: shCert, newClass: shNewClass, editProfile: shEditProfile, directions: shDirections, firstClass: shFirstClass, legal: shLegal, deleteAccount: shDeleteAccount, photo: shPhoto }, ...(window.EXTRA_SHEETS || {}) })[s.type](s);
-  $sheet.innerHTML = `<div class="backdrop" data-act="close"></div><div class="sheet" role="dialog"><div class="grab"></div>${body}</div>`;
+  $sheet.innerHTML = `<div class="backdrop" data-act="close" aria-hidden="true"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabindex="-1"><button class="sr-only" data-act="close">סגירה</button><div class="grab" aria-hidden="true"></div>${body}</div>`;
+  const sh = $sheet.querySelector('.sheet'), h = sh.querySelector('h1, h2');
+  if (h) h.id = 'sheet-title';
+  if (opening) sh.focus();
 }
+let lastFocus = null;
 
 function shDirections() {
   const d = { ...CONFIG.directions, ...(S.directions || {}) }, q = encodeURIComponent(d.address);
   if (S.guest || !S.user || !d.code) return `<h2>איך מגיעים</h2>
     <div class="dir-facts"><p class="dir-address">${esc(d.address)}</p>
-      <p class="small muted">סרטון ההגעה, הקומה וקוד הכניסה יופיעו כאן ${S.guest || !S.user ? 'אחרי ההרשמה ורכישת כרטיסייה' : 'אחרי רכישת כרטיסייה'} 🤍</p></div>
+      <p class="small muted">סרטון ההגעה, הקומה וקוד הכניסה יופיעו כאן ${S.guest || !S.user ? 'אחרי ההרשמה והרכישה' : 'אחרי הרכישה'} 🤍</p></div>
     <a class="btn block" href="https://waze.com/ul?q=${q}&navigate=yes" target="_blank" rel="noopener">ניווט ב-Waze</a>
     <a class="btn block ghost" style="margin-top:8px" href="https://maps.apple.com/?q=${q}" target="_blank" rel="noopener">ניווט במפות</a>`;
   return `<h2>איך מגיעים</h2>
@@ -1126,14 +1173,14 @@ function shClass({ id }) {
   const past = c.start < now();
   const hrs = hoursUntil(c.start);
   let action = '';
-  if (c.cancelled) action = '<div class="note warn">שחר ביטלה את השיעור הזה. אם נרשמת — השיעור חזר לכרטיסייה שלך.</div>';
+  if (c.cancelled) action = '<div class="note warn">שחר ביטלה את השיעור הזה. אם נרשמת, קיבלת הודעה.</div>';
   else if (past) action = '<div class="note">השיעור הזה כבר הסתיים.</div>';
   else if (b) action = `
     <a class="btn block soft" href="${icsFor(c)}" download="shiur.ics">הוספה ליומן</a>
     <button class="btn block ghost" data-act="cancel" data-id="${b.id}">ביטול ההרשמה</button>
     <p class="tiny muted center">${hrs >= CONFIG.cancelHours ? `ביטול חינם עד ${relDay(c.start - CONFIG.cancelHours * H)} ב-${fmtTime(c.start - CONFIG.cancelHours * H)}` : 'עברנו את חלון הביטול החינמי — ביטול עכשיו ייספר מהכרטיסייה'}</p>`;
   else if (left > 0 && (S.guest || !S.user)) action = `<button class="btn block rose" data-act="go" data-screen="auth">להרשמה לשיעור צריך להתחבר</button>
-    <p class="tiny muted center">ההרשמה דורשת חשבון, כרטיסייה והצהרת בריאות</p>`;
+    <p class="tiny muted center">ההרשמה דורשת חשבון, מנוי או שיעור, והצהרת בריאות</p>`;
   else if (left > 0) action = `<button class="btn block rose" data-act="book" data-id="${c.id}">הרשמה לשיעור</button>
     <p class="tiny muted center">ייספר שיעור אחד מהכרטיסייה · נותרו לך ${totalCredits()}</p>`;
   else action = '<div class="note">השיעור הזה מלא.</div>';
@@ -1153,7 +1200,7 @@ function shShop() {
   return `<div class="stack">
     <h1>לרכישת שיעורים</h1>
     <p class="muted">בחרי מה מתאים לך. התשלום מאובטח דרך תקבול.</p>
-    ${CONFIG.products.filter(p => !(p.trial && trialUsed(p.id))).map(p => `
+    ${CONFIG.products.filter(p => !p.hidden && !(p.trial && trialUsed(p.id))).map(p => `
       <div class="card product ${p.featured ? 'featured' : ''}" data-act="pick" data-id="${p.id}" role="button">
         ${p.featured ? '<span class="badge">הכי משתלם</span>' : ''}
         <div class="count">${p.credits}</div>
@@ -1482,18 +1529,22 @@ document.addEventListener('click', e => {
       return go({ screen: 'terms' });
     }
     case 'terms': {
-      if (!ui.form.photo) return toast('בחרי מה מתאים לך לגבי צילומים בשיעור 📷');
+      const again = !!S.user?.termsAt;
+      if (!ui.form.photo && !(again && S.user.photo)) return toast('בחרי מה מתאים לך לגבי צילומים בשיעור 📷');
       if (!document.getElementById('f-tok').checked) return toast('צריך לאשר את התקנון כדי להמשיך');
+      if (!document.getElementById('f-tpriv').checked) return toast('צריך לאשר את מדיניות הפרטיות כדי להמשיך');
       if (LIVE) {
         return (async () => {
           try { await API.acceptTerms(ui.form.photo); await API.sync(); } catch (e) { return toast(errHe(e)); }
           go({ screen: null, tab: 'home' });
+          if (again) return toast('תודה! התקנון אושר 🤍');
           if (needsCertMissing()) toast('תודה! אל תשכחי להעלות אישור רפואי מהפרופיל לפני השיעור הראשון 🤍');
           openSheet({ type: 'shop' });
         })();
       }
-      S.user.termsAt = now(); S.user.photo = ui.form.photo; save();
+      S.user.termsAt = now(); S.user.photo = ui.form.photo || S.user.photo; save();
       go({ screen: null, tab: 'home' });
+      if (again) return toast('תודה! התקנון אושר 🤍');
       if (needsCertMissing()) toast('תודה! אל תשכחי להעלות אישור רפואי מהפרופיל לפני השיעור הראשון 🤍');
       return openSheet({ type: 'shop' });
     }
@@ -1533,6 +1584,26 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ui.sheet) closeSheet(); });
+
+/* ---------- נגישות ----------
+   כל אלמנט לחיץ שאינו כפתור או קישור (כרטיסים עם data-act) מקבל מיקוד מקלדת ותפקיד "כפתור",
+   ו-Enter / רווח מפעילים אותו. תמונות בלי טקסט חלופי מסומנות כקישוטיות. */
+(function a11y() {
+  const fix = root => {
+    root.querySelectorAll('[data-act]:not(button):not(a):not(input):not(select):not(label):not(.backdrop)').forEach(el => {
+      if (!el.hasAttribute('tabindex')) el.tabIndex = 0;
+      if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+    });
+    root.querySelectorAll('img:not([alt])').forEach(el => el.setAttribute('alt', ''));
+    root.querySelectorAll('svg:not([role]):not([aria-hidden])').forEach(el => el.setAttribute('aria-hidden', 'true'));
+    root.querySelectorAll('.terms').forEach(el => { if (!el.hasAttribute('tabindex')) { el.tabIndex = 0; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'התקנון'); } });
+  };
+  new MutationObserver(() => { fix(document.body); }).observe(document.body, { childList: true, subtree: true });
+  fix(document.body);
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('[role="button"]:not(button)')) { e.preventDefault(); e.target.click(); }
+  });
+})();
 
 // קישור ישיר לדוגמה: ?demo=journey (המסע של משתמשת לדוגמה) או ?demo=home
 const demoParam = new URLSearchParams(location.search).get('demo');

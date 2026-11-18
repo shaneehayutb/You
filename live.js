@@ -69,7 +69,11 @@ const ERR_HE = {
   bad_input: 'בדקי את הפרטים',
   trial_used: 'כבר השתמשת בשיעור הניסיון הזה. אפשר לבחור שיעור בודד או מנוי 🤍',
   already_subscribed: 'כבר יש לך מנוי פעיל. אפשר לשנות מסלול מתוך ניהול המנוי',
+  not_upgrade: 'המסלול הזה לא יקר יותר, אז הוא ייכנס מיום החידוש',
+  change_pending: 'כבר יש שינוי מסלול שמחכה ליום החידוש. אפשר לכתוב לשחר',
   no_subscription: 'לא נמצא מנוי פעיל',
+  withdraw_expired: 'עברו 14 יום מהרכישה, אז אפשר רק להפסיק את החיובים הבאים',
+  withdraw_used: 'כבר השתתפת בשיעור במנוי, אז אפשר רק להפסיק את החיובים הבאים',
   subs_unavailable: 'המנויים עוד לא זמינים',
   not_yet_available: 'המסלול הזה ייפתח בקרוב',
   cancel_failed: 'הביטול לא עבר בתקבול. נסי שוב, או כתבי לשחר',
@@ -184,6 +188,9 @@ const API = {
     if (S.isAdmin) S.adminData = null;   // נטען מחדש במסך הניהול
     // מנויים חודשיים
     S.subsEnabled = !!settings?.subs_enabled;
+    S.termsVersion = settings?.terms_version ? Date.parse(settings.terms_version) : null;
+    // תקנון חדש פורסם בזמן שהאפליקציה פתוחה — מבקשים לאשר
+    if (typeof termsOutdated === 'function' && termsOutdated() && S.user?.health && typeof ui !== 'undefined' && ui.screen == null) ui.screen = 'terms';
     if (S.subsEnabled || S.isAdmin) {
       const [plans, slots, subs] = await Promise.all([
         call(sb.from('sub_plans').select('*').eq('active', true).order('sort')),
@@ -214,6 +221,9 @@ const API = {
     if (settings?.whatsapp) S.whatsapp = settings.whatsapp;
     if (settings?.texts) S.texts = settings.texts;
     if (typeof applyProducts === 'function') applyProducts(prods.map(p => ({ id: p.id, price: p.price_ils, credits: p.credits, days: p.valid_days })));
+    // מחירי המנויים לתצוגה בדף הבית (מידע ציבורי)
+    S.subsEnabled = !!settings?.subs_enabled;
+    S.subPlans = S.subsEnabled ? (await call(sb.from('sub_plans').select('*').eq('active', true).order('sort'))).filter(p => !p.admin_only) : [];
   },
 
   /* ---- התחברות ---- */
@@ -311,6 +321,11 @@ const API = {
     if (error) { const b = await error.context?.json?.().catch(() => null); const e = new Error(b?.error || 'cancel_failed'); e.detail = b?.detail; throw e; }
     return r;
   },
+  async subWithdraw() {
+    const { data: r, error } = await sb.functions.invoke('takbull', { body: { action: 'subWithdraw' } });
+    if (error) { const b = await error.context?.json?.().catch(() => null); const e = new Error(b?.error || 'refund_failed'); e.detail = b?.detail; throw e; }
+    return r;
+  },
   subUnskip(bookingId) { return call(sb.rpc('sub_unskip', { p_booking: bookingId })); },
   subChangeDay(day) { return call(sb.rpc('sub_change_day', { p_day: day })); },
 
@@ -330,6 +345,23 @@ const API = {
   /* ---- טפסים מהאתר (form.html) ---- */
   async intakesLoad() {
     return call(sb.from('intake_forms').select('*').order('created_at', { ascending: false }).limit(200));
+  },
+  // תיק לקוחה (שחר): כל ההצהרות, התקנון, הצילומים, המנויים וטופס מהאתר
+  async clientFile(userId) {
+    const [prof, hs, subs] = await Promise.all([
+      call(sb.from('profiles').select('full_name,phone,email,age,parent_name,photo_consent,photo_consent_at,terms_accepted_at,created_at').eq('id', userId).single()),
+      call(sb.from('health_declarations').select('*').eq('user_id', userId).order('signed_at', { ascending: false })),
+      call(sb.from('subscriptions').select('plan_id,status,day,price_ils,created_at,started_at,ends_at,cancelled_at').eq('user_id', userId).in('status', ['active', 'cancelled', 'failed']).order('created_at', { ascending: false })),
+    ]);
+    const digits = x => String(x || '').replace(/\D/g, '').slice(-9);
+    const ph = digits(prof?.phone), em = String(prof?.email || '').toLowerCase();
+    const forms = (ph || em) ? (await call(sb.from('intake_forms').select('*').order('created_at', { ascending: false }).limit(300)))
+      .filter(f => (ph && digits(f.phone) === ph) || (em && String(f.email || '').toLowerCase() === em)) : [];
+    return { prof, hs, subs, forms };
+  },
+  async certUrl(path) {
+    const { data, error } = await sb.storage.from('certs').createSignedUrl(path, 600);
+    if (error) throw error; return data.signedUrl;
   },
   intakeHandled(id, handled) { return call(sb.from('intake_forms').update({ handled }).eq('id', id)); },
 

@@ -12,8 +12,8 @@
   /* ---------- נתונים: מסלולים ומשבצות ---------- */
   const DEMO_SLOTS = {
     flex: { dow: 0, h: 19, m: 0, title: 'שיעור גמישות', cap: 10, label: 'גמישות' },
-    sun:  { dow: 0, h: 20, m: 0, title: 'נשיות בקצב', cap: 12, label: 'ריקוד' },
-    wed:  { dow: 3, h: 18, m: 0, title: 'נשיות בקצב', cap: 12, label: 'ריקוד' },
+    sun:  { dow: 0, h: 20, m: 0, title: 'שיעור ריקוד', cap: 12, label: 'ריקוד' },
+    wed:  { dow: 3, h: 18, m: 0, title: 'שיעור ריקוד', cap: 12, label: 'ריקוד' },
   };
   const DEMO_PLANS = [
     { id: 'flex',   name: 'גמישות',                price: 240, fixed: ['flex'],               choose: 0 },
@@ -47,9 +47,10 @@
   const fullDate = t => `${fmtDate(t)}.${String(new Date(t).getFullYear()).slice(2)}`;
   const TERMS = [
     'המנוי מתחדש אוטומטית בחיוב לכרטיס האשראי, בכל חודש מיום הרכישה, עד שמבטלים.',
-    'מקום שמור לך אוטומטית בכל שיעור במסלול. אם לא תוכלי להגיע, אפשר לבטל את השיעור באפליקציה כדי לפנות את המקום.',
+    'מקום שמור לך אוטומטית בכל שיעור במסלול. אם לא תוכלי להגיע, לוחצים "לא אגיע" כדי לפנות את המקום.',
     'אין החזר או זיכוי על שיעור שלא הגעת אליו.',
-    'בחגים אין שיעורים.',
+    'בחגים אין שיעורים, ואין עליהם החזר או זיכוי. נודיע לפחות 30 יום מראש.',
+    'אפשר לעבור לכל מסלול אחר. מסלול יקר יותר נכנס מיד, ומשלמים רק את ההפרש עד יום החידוש. מסלול זול יותר נכנס ביום החידוש.',
     'אפשר לבטל את המנוי בכל רגע דרך האפליקציה. אחרי הביטול לא יהיו חיובים נוספים, והמנוי פעיל עד מועד החידוש הקרוב. על חיוב שכבר בוצע אין החזר.',
     'המנוי אישי ואינו ניתן להעברה.',
   ];
@@ -204,10 +205,11 @@
   const origPay = typeof shPay === 'function' ? shPay : null;
   function shSubPay(o) {
     if (!String(o.id || '').startsWith('sub:')) return origPay(o);
-    const [, pid, mode] = o.id.split(':'), p = plan(pid);
+    const [, pid, mode, amt] = o.id.split(':'), p = plan(pid);
     return `<div class="stack">
       <h1>${p.emoji} ${esc(p.name)} · ${p.price}₪ לחודש</h1>
       ${mode === 'change' ? `<p class="small muted">החיוב הראשון במסלול החדש יהיה ביום החידוש. עכשיו רק מאשרים את הכרטיס.</p>` : ''}
+      ${mode === 'upgrade' && amt ? `<p class="small muted">עכשיו יחויבו ${amt}₪, ההפרש עד יום החידוש. אחר כך ${p.price}₪ בכל חודש.</p>` : ''}
       <iframe class="pay-frame" src="${esc(o.url)}" title="תשלום מאובטח" allow="payment"></iframe>
       <p class="small muted center">🔒 תשלום מאובטח בתקן PCI דרך תקבול</p>
     </div>`;
@@ -266,21 +268,44 @@
     </div>`;
   }
 
+  // שדרוג (מסלול יקר יותר): נכנס עכשיו, משלמים את ההפרש עד החידוש. מסלול זול יותר: מיום החידוש.
+  const curPrice = s => (PREVIEW ? plan(s.plan).price : (S.subs || []).find(x => x.id === s.id)?.price_ils) ?? plan(s.plan).price;
+  const isUp = (s, p) => p.price > curPrice(s);
+  function upNow(s, p) {
+    const DAY = 86400000, start = new Date(s.renewAt); start.setMonth(start.getMonth() - 1);
+    const period = Math.round((s.renewAt - start.getTime()) / DAY);
+    const left = Math.min(period, Math.max(0, Math.ceil((s.renewAt - now()) / DAY)));
+    return Math.max(1, Math.round((p.price - curPrice(s)) * left / period));
+  }
+  // כל המסלולים שהיא לא נמצאת בהם. יקר יותר: מתחיל עכשיו (משלמים הפרש). זול יותר: מיום החידוש.
   function shSubChange() {
-    const s = sub();
+    const s = sub(), cur = plan(s.plan);
     return `<div class="stack">
       <button class="link small" data-act="sbManage" style="align-self:flex-start">→ חזרה</button>
       <h1>שינוי מסלול</h1>
-      <p class="muted">השינוי ייכנס לתוקף ביום החידוש, <b>${fullDate(s.renewAt)}</b>. עד אז המנוי הנוכחי ממשיך כרגיל.</p>
+      <p class="muted">עכשיו את ב<b>${esc(cur.name)}</b>. לאיזה מסלול לעבור?</p>
       ${plans().filter(p => p.id !== s.plan && !p.soon).map(p => `<div class="card product" data-act="sbPick" data-id="${p.id}" data-mode="change" role="button">
         <div class="count" style="font-size:20px">${p.emoji}</div>
-        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">${esc(p.sub)}</p></div>
+        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">${esc(p.sub)}</p>
+          <p class="tiny muted">${isUp(s, p) ? `מתחיל מיד · עכשיו רק ${upNow(s, p)}₪` : `מתחיל ב-${fullDate(s.renewAt)}`}</p></div>
         <div class="price">${p.price}₪</div></div>`).join('')}
     </div>`;
   }
 
   function shSubConfirmChange({ id, day }) {
     const s = sub(), p = plan(id), cur = plan(s.plan);
+    if (isUp(s, p)) { const amt = upNow(s, p); return `<div class="stack">
+      <h1>לשדרג את המנוי?</h1>
+      <div class="card" style="padding:4px 18px;margin:0">
+        <div class="list-row"><span class="grow">המסלול החדש</span><b>${esc(p.name)}</b></div>
+        ${slotsOf(p, day).map(k => `<div class="list-row"><span class="grow">${slotInfo(k).label}</span><b>כל יום ${dayOf(k)} ${slotTime(k)}</b></div>`).join('')}
+        <div class="list-row"><span class="grow">לתשלום עכשיו</span><b>${amt}₪</b></div>
+        <div class="list-row"><span class="grow">מ-${fullDate(s.renewAt)}, כל חודש</span><b>${p.price}₪</b></div>
+      </div>
+      <p class="small muted">${amt}₪ זה ההפרש בין המסלולים, רק על הימים שנשארו עד ${fullDate(s.renewAt)}. המקום שלך נשמר בשיעורים החדשים כבר מעכשיו.</p>
+      <button class="btn block rose" data-act="sbChangeOk" data-id="${id}" data-day="${day || ''}">כן, לשדרג ולשלם ${amt}₪</button>
+      <button class="btn block ghost" data-act="sbManage">לא, להשאיר כמו שזה</button>
+    </div>`; }
     return `<div class="stack">
       <h1>לאשר את השינוי?</h1>
       <div class="card" style="padding:4px 18px;margin:0">
@@ -294,8 +319,26 @@
     </div>`;
   }
 
+  // בתוך 14 יום מתחילת המנוי, ולפני ששמר מקום בשיעור שכבר עבר: ביטול עסקה עם החזר (פחות 5% או 100 ₪)
+  function withdrawInfo(s) {
+    if (!s || s.replaces || !s.startAt || now() - s.startAt > 14 * D) return null;
+    if (S.bookings.some(b => b.subId === s.id && b.status === 'booked' && cls(b.classId)?.start < now())) return null;
+    const price = curPrice(s), fee = Math.round(Math.min(price * 0.05, 100) * 100) / 100;
+    return { fee, amount: Math.round((price - fee) * 100) / 100 };
+  }
   function shSubCancel() {
-    const s = sub();
+    const s = sub(), w = withdrawInfo(s);
+    if (w) return `<div class="stack">
+      <h1>ביטול המנוי</h1>
+      <div class="card" style="margin:0">
+        <p class="small">עוד לא עברו 14 יום מהרכישה, ועוד לא השתתפת בשיעור, אז אפשר לבטל את העסקה ולקבל החזר.</p>
+        <p class="small" style="margin-top:6px">✓ יוחזרו לך <b>${w.amount}₪</b> לכרטיס האשראי (אחרי דמי ביטול של ${w.fee}₪).</p>
+        <p class="small" style="margin-top:6px">✓ המנוי נסגר עכשיו, ולא יהיו חיובים נוספים.</p>
+      </div>
+      <button class="btn block" data-act="sbWithdrawOk" style="background:var(--rose-deep)">כן, לבטל ולקבל החזר</button>
+      <button class="btn block ghost" data-act="sbManage">לא, אני נשארת 🤍</button>
+      <p class="tiny muted center">נתקלת בבעיה? אפשר לכתוב לשחר בוואטסאפ.</p>
+    </div>`;
     return `<div class="stack">
       <h1>ביטול המנוי</h1>
       <div class="card" style="margin:0">
@@ -305,6 +348,7 @@
       </div>
       <button class="btn block" data-act="sbCancelOk" style="background:var(--rose-deep)">כן, לבטל את המנוי</button>
       <button class="btn block ghost" data-act="sbManage">לא, אני נשארת 🤍</button>
+      <p class="tiny muted center">נתקלת בבעיה? אפשר לכתוב לשחר בוואטסאפ.</p>
     </div>`;
   }
 
@@ -393,7 +437,7 @@
     try {
       const r = await API.subOrder(action, id, day || '');
       payDone = false;
-      openSheet({ type: 'pay', id: `sub:${id}:${mode}`, uniqId: r.uniqId, url: r.url });
+      openSheet({ type: 'pay', id: `sub:${id}:${mode}:${r.amountNow ?? ''}`, uniqId: r.uniqId, url: r.url });
     } catch (e) {
       toast(errHe(e) + (e?.detail ? ' · ' + e.detail : ''));
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label; }
@@ -439,14 +483,23 @@
       case 'sbChange': return openSheet({ type: 'sbChange' });
       case 'sbChangeOk': {
         const p = plan(id), s = sub();
+        const up = isUp(s, p);
+        if (PREVIEW && up) { S.sub = { ...s, plan: id, day: ds.day || null, slots: slotsOf(p, ds.day || null) }; previewSync(); render(); openSheet({ type: 'sbManage' }); return toast(`המנוי שודרג ל${p.name} 🤍`); }
         if (PREVIEW) { s.pending = { plan: id, day: ds.day || null, slots: slotsOf(p, ds.day || null) }; previewSync(); render(); openSheet({ type: 'sbManage' }); return toast(`מ-${fullDate(s.renewAt)} המנוי יעבור ל${p.name}`); }
-        return startPay('subChange', id, ds.day, 'change', el);
+        return startPay(up ? 'subUpgrade' : 'subChange', id, ds.day, up ? 'upgrade' : 'change', el);
       }
       case 'sbCancelAsk': return openSheet({ type: 'sbCancel' });
       case 'sbCancelOk': {
         const s = sub();
         return act(() => API.subCancel(), () => { s.endsAt = s.renewAt; s.pending = null; }, 'המנוי בוטל. נתראה עד ' + fullDate(s.renewAt) + ' 🤍')
           .then(ok => ok && openSheet({ type: 'sbManage' }));
+      }
+      case 'sbWithdrawOk': {
+        if (PREVIEW) { S.sub = null; previewSync(); render(); closeSheet(); return toast('המנוי בוטל, וההחזר בדרך 🤍'); }
+        if (working) return; working = true; el.disabled = true; el.textContent = 'מבטלות…';
+        return API.subWithdraw().then(async r => { await API.sync(); render(); closeSheet(); toast(`המנוי בוטל. יוחזרו לך ${r.amount}₪ 🤍`); })
+          .catch(err => { toast(errHe(err)); el.disabled = false; el.textContent = 'כן, לבטל ולקבל החזר'; })
+          .finally(() => { working = false; });
       }
       case 'sbSkip': return openSheet({ type: 'sbSkip', bookingId: id });
       case 'sbSkipOk': { const b = S.bookings.find(x => x.id === id);
