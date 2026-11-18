@@ -67,6 +67,12 @@ const ERR_HE = {
   client_health_missing: 'היא עוד לא מילאה הצהרת בריאות (או חסר אישור רפואי)',
   client_already_booked: 'היא כבר רשומה לשיעור הזה',
   bad_input: 'בדקי את הפרטים',
+  already_subscribed: 'כבר יש לך מנוי פעיל. אפשר לשנות מסלול מתוך ניהול המנוי',
+  no_subscription: 'לא נמצא מנוי פעיל',
+  subs_unavailable: 'המנויים עוד לא זמינים',
+  not_yet_available: 'המסלול הזה ייפתח בקרוב',
+  cancel_failed: 'הביטול לא עבר בתקבול. נסי שוב, או כתבי לשחר',
+  active_subscription: 'יש לך מנוי פעיל. קודם מבטלים את המנוי, ואז אפשר למחוק את החשבון',
   booking_not_found: 'ההרשמה לא נמצאה',
   class_started: 'השיעור כבר התחיל',
   not_admin: 'רק שחר יכולה לעשות את זה',
@@ -156,7 +162,7 @@ const API = {
       termsAt: ts(prof.terms_accepted_at),
       photo: prof.photo_consent || null,
     } : null;
-    S.purchases = purch.map(p => ({ id: p.id, productId: p.product_id, name: pname(p.product_id), credits: p.credits, remaining: p.remaining, price: p.price_ils, at: ts(p.purchased_at), expiresAt: ts(p.expires_at) }));
+    S.purchases = purch.filter(p => !String(p.product_id).startsWith('sub_')).map(p => ({ id: p.id, productId: p.product_id, name: pname(p.product_id), credits: p.credits, remaining: p.remaining, price: p.price_ils, at: ts(p.purchased_at), expiresAt: ts(p.expires_at) }));
     S.classes = classes.map(c => ({
       id: c.id, seriesId: c.series_id, title: c.title, note: c.note || '', start: ts(c.starts_at), dur: c.duration_min, cap: c.capacity,
       cancelled: !!c.cancelled_at,
@@ -165,7 +171,7 @@ const API = {
       others: Math.max(0, (taken[c.id] || 0) - (myBooked.has(c.id) ? 1 : 0)),
     }));
     // "attended" בשרת = "booked" באפליקציה (היא הייתה בשיעור)
-    S.bookings = books.map(b => ({ id: b.id, classId: b.class_id, purchaseId: b.purchase_id, status: b.status === 'attended' ? 'booked' : b.status, at: ts(b.created_at), video: vm[b.id] || null }));
+    S.bookings = books.map(b => ({ id: b.id, classId: b.class_id, purchaseId: b.purchase_id, subId: b.subscription_id || null, status: b.status === 'attended' ? 'booked' : b.status, at: ts(b.created_at), video: vm[b.id] || null }));
     S.notices = notes.map(n => ({ id: n.id, title: n.title, text: n.body, read: !!n.read_at }));
     if (settings?.directions) S.directions = settings.directions;
     if (settings?.studio_rate != null) S.studioRate = settings.studio_rate;
@@ -175,6 +181,18 @@ const API = {
     if (settings?.admin_notify) S.adminNotify = settings.admin_notify;
     if (typeof applyProducts === 'function') applyProducts(prods.map(p => ({ id: p.id, price: p.price_ils, credits: p.credits, days: p.valid_days })));
     if (S.isAdmin) S.adminData = null;   // נטען מחדש במסך הניהול
+    // מנויים חודשיים
+    S.subsEnabled = !!settings?.subs_enabled;
+    if (S.subsEnabled || S.isAdmin) {
+      const [plans, slots, subs] = await Promise.all([
+        call(sb.from('sub_plans').select('*').eq('active', true).order('sort')),
+        call(sb.from('sub_slots').select('*')),
+        call(sb.from('subscriptions').select('*').eq('user_id', uid).order('created_at', { ascending: false })),
+      ]);
+      S.subPlans = plans.filter(p => S.isAdmin || !p.admin_only);
+      S.subSlots = slots;
+      S.subs = subs;
+    } else { S.subPlans = []; S.subSlots = []; S.subs = []; }
     S.series = series.map(x => { const [h, m] = x.start_time.split(':').map(Number); return { id: x.id, dow: x.dow, h, m, title: x.title, dur: x.duration_min, cap: x.capacity, until: ts(x.active_until) }; });
   },
 
@@ -277,6 +295,24 @@ const API = {
     if (!r?.url) { const e = new Error(r?.error || 'payment_unavailable'); e.detail = r?.detail; throw e; }
     return r;
   },
+  /* ---- מנויים ---- */
+  async subOrder(action, planId, day) {
+    const { data: r, error } = await sb.functions.invoke('takbull', { body: { action, planId, day } });
+    if (error) {
+      const b = await error.context?.json?.().catch(() => null);
+      const e = new Error(b?.error || 'payment_unavailable'); e.detail = b?.detail; throw e;
+    }
+    if (!r?.url) { const e = new Error(r?.error || 'payment_unavailable'); e.detail = r?.detail; throw e; }
+    return r;
+  },
+  async subCancel(subId) {
+    const { data: r, error } = await sb.functions.invoke('takbull', { body: subId ? { action: 'subCancelFor', subId } : { action: 'subCancel' } });
+    if (error) { const b = await error.context?.json?.().catch(() => null); const e = new Error(b?.error || 'cancel_failed'); e.detail = b?.detail; throw e; }
+    return r;
+  },
+  subUnskip(bookingId) { return call(sb.rpc('sub_unskip', { p_booking: bookingId })); },
+  subChangeDay(day) { return call(sb.rpc('sub_change_day', { p_day: day })); },
+
   async payCheck(uniqId) {
     const r = await call(sb.functions.invoke('takbull', { body: { action: 'check', uniqId } }));
     return r?.status;
@@ -359,7 +395,9 @@ const API = {
       };
     });
     const classes = cls.map(c => ({ start: ts(c.starts_at), dur: c.duration_min, cancelled: !!c.cancelled_at }));
-    return { students, purchases, classes };
+    const subs = await call(sb.from('subscriptions').select('*').in('status', ['active', 'cancelled', 'failed']).order('created_at', { ascending: false })).catch(() => []);
+    const nameOf = id => profs.find(p => p.id === id)?.full_name || '—';
+    return { students, purchases, classes, subs: subs.map(x => ({ ...x, name: nameOf(x.user_id) })) };
   },
   markAttendance(bookingId, attended) { return call(sb.rpc('admin_mark_attendance', { p_booking: bookingId, p_attended: attended })); },
   updateClass(classId, { title, note, start, cap, all }) {
