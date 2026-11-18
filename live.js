@@ -400,7 +400,7 @@ const API = {
   /* ---- כלי ניהול ---- */
   async adminLoad() {
     // חשבון הבודק של אפל (John Apple): לא מוצג ברשימת הלקוחות. לא למחוק אותו
-    const HIDDEN_CLIENTS = ['284616f2-4330-4063-87da-344d53d442ee'];
+    const HIDDEN_CLIENTS = ['284616f2-4330-4063-87da-344d53d442ee', 'a6f7ac69-bc4e-4d4f-9f36-3541f789edd1'];   // הבודק של אפל · חשבון בדיקה Shsb
     const yearAgo = new Date(Date.now() - 400 * 864e5).toISOString();
     const [profs, purch, hs, books, prods, cls, orders] = await Promise.all([
       call(sb.from('profiles').select('*').eq('is_admin', false).not('id', 'in', `(${HIDDEN_CLIENTS.join(',')})`)),
