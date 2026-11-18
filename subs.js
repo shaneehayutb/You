@@ -70,6 +70,9 @@
   }
 
   /* ---------- מסך הבית: כרטיס המנוי במקום הכרטיסייה ---------- */
+  // למנויות אין צורך בבאנר "השיעור הראשון שלך": הן יודעות באילו ימים
+  upcomingFirstClass = () => null;
+
   punchCard = function () {
     const s = sub();
     if (!s) return `<div class="card punch empty">
@@ -126,8 +129,7 @@
       <p class="muted">${p.fixed.includes('flex') ? 'שיעור הגמישות כבר כלול (ראשון 19:00). עכשיו בוחרים את יום הריקוד הקבוע שלך.' : 'בוחרים יום אחד קבוע. המקום שלך יישמר בו בכל שבוע.'}</p>
       ${DANCE_DAYS.map(k => `<div class="card product" data-act="sbDay" data-id="${id}" data-day="${k}" data-mode="${mode}" role="button">
         <div class="count" style="font-size:15px;line-height:1.1">${dayNames[SLOTS[k].dow]}<br><small>${slotTime(k)}</small></div>
-        <div class="grow"><h3>כל יום ${dayNames[SLOTS[k].dow]} ב-${slotTime(k)}</h3>
-          <p class="small muted">השיעורים הקרובים: ${nextDates(k).map(c => fmtDate(c.start)).join(', ')}</p></div></div>`).join('')}
+        <div class="grow"><h3>כל יום ${dayNames[SLOTS[k].dow]} ב-${slotTime(k)}</h3></div></div>`).join('')}
     </div>`;
   }
 
@@ -139,8 +141,7 @@
       <h1>רק לוודא 🤍</h1>
       <p>בחרת לרקוד <b>כל יום ${d} ב-${slotTime(day)}</b>.</p>
       <div class="card" style="text-align:right;margin:0">
-        <p class="small">✓ המקום שלך יישמר אוטומטית בכל יום ${d}.</p>
-        <p class="small" style="margin-top:6px">✓ השיעור הראשון שלך: <b>${nextDates(day, 1).map(c => fmtDay(c.start)).join('')}</b></p>
+        <p class="small">✓ המקום שלך יישמר אוטומטית בכל יום ${d} ב-${slotTime(day)}.</p>
         <p class="small muted" style="margin-top:6px">ביום ${dayNames[SLOTS[other].dow]} לא שמור לך מקום${mode === 'new' ? '. אפשר להגיע גם אליו עם שיעור נוסף.' : '.'}</p>
       </div>
       <button class="btn block rose" data-act="sbDayOk" data-id="${id}" data-day="${day}" data-mode="${mode}">כן, יום ${d} זה היום שלי</button>
@@ -168,15 +169,14 @@
 
   function shSubWelcome() {
     const s = sub(), p = plan(s.plan);
-    const first = S.bookings.filter(b => b.subId && b.status === 'booked').map(b => cls(b.classId)).filter(Boolean).sort((a, b) => a.start - b.start).slice(0, 3);
     return `<div class="stack center">
       <div class="done-heart" style="font-size:54px;margin-top:10px">🤍</div>
       <h1>ברוכה הבאה למנוי!</h1>
       <p>${esc(p.name)} · ${p.price}₪ לחודש</p>
       <div class="card" style="text-align:right;margin:0">
         <h3>המקום שלך כבר שמור 🎉</h3>
-        ${first.map(c => `<p class="small" style="margin-top:6px">✓ ${fmtDay(c.start)} · ${fmtTime(c.start)} · ${esc(c.title)}</p>`).join('')}
-        <p class="tiny muted" style="margin-top:8px">וכך בכל שבוע. לא צריך להירשם כל פעם מחדש.</p>
+        ${s.slots.map(k => `<p class="small" style="margin-top:6px">✓ כל יום ${dayNames[SLOTS[k].dow]} ${slotTime(k)} · ${SLOTS[k].label}</p>`).join('')}
+        <p class="tiny muted" style="margin-top:8px">לא צריך להירשם כל פעם מחדש.</p>
       </div>
       <button class="btn block" data-act="sbClose">מעולה</button>
     </div>`;
