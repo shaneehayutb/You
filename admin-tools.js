@@ -482,7 +482,15 @@ function vAdminProfile() {
       <button class="btn block soft" data-act="adSaveDirections">שמירת פרטי ההגעה</button>
     </div>
 
-    <div class="section-title"><h2>מחירים</h2></div>
+    ${LIVE && (S.subPlans || []).length ? `<div class="section-title"><h2>מחירי המנויים</h2></div>
+    <div class="card stack" style="margin:0">
+      ${S.subPlans.filter(p => !p.admin_only).map(p => `<label class="field"><span>${esc(p.name)} (₪ לחודש)</span>
+        <input class="input" id="sp-${p.id}" type="number" value="${p.price_ils}"></label>`).join('')}
+      <p class="tiny muted">מחיר חדש חל על מנויות חדשות. מי שכבר במנוי ממשיכה במחיר שבו נרשמה.</p>
+      <button class="btn block soft" data-act="adSaveSubPrices">שמירת מחירי המנויים</button>
+    </div>` : ''}
+
+    <div class="section-title"><h2>${LIVE && (S.subPlans || []).length ? 'שיעור בודד וכרטיסיות' : 'מחירים'}</h2></div>
     <div class="card stack" style="margin:0">
       ${CONFIG.products.map((p, i) => `<div>
         <b>${esc(p.name)}</b>
@@ -849,6 +857,11 @@ document.addEventListener('click', e => {
       if (LIVE) return liveDo(() => API.saveProducts(list), 'המחירים עודכנו');
       applyProducts(list); S.productsOverride = list; save(); closeSheet(); render();
       return toast('המחירים עודכנו');
+    }
+    case 'adSaveSubPrices': {
+      const list = (S.subPlans || []).filter(p => !p.admin_only).map(p => ({ id: p.id, price: Math.round(+val(`sp-${p.id}`)) }));
+      if (list.some(x => !(x.price > 0))) return toast('בדקי את המחירים');
+      return liveDo(() => API.saveSubPrices(list), 'מחירי המנויים עודכנו');
     }
     case 'adSaveWa': {
       const wa = val('bz-wa');

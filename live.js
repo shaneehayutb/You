@@ -419,6 +419,12 @@ const API = {
   markRefunded(purchaseId, amount) { return call(sb.rpc('admin_mark_refunded', { p_purchase: purchaseId, p_amount: amount })); },
   extendPurchase(purchaseId, days) { return call(sb.rpc('admin_extend_purchase', { p_purchase: purchaseId, p_days: days })); },
   setBlocked(userId, blocked) { return call(sb.rpc('admin_set_blocked', { p_user: userId, p_blocked: blocked })); },
+  async saveSubPrices(list) {
+    for (const p of list) {
+      await call(sb.from('sub_plans').update({ price_ils: p.price }).eq('id', p.id));
+      await call(sb.from('products').update({ price_ils: p.price }).eq('id', 'sub_' + p.id));
+    }
+  },
   async saveProducts(list) {
     for (const p of list) await call(sb.from('products').update({ price_ils: p.price, credits: p.credits, valid_days: p.days }).eq('id', p.id));
   },

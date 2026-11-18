@@ -1045,7 +1045,7 @@ function vAdmin() {
       return `<div class="card ${c.cancelled ? 'cancelled' : ''} class-item" data-act="adminClass" data-id="${c.id}" role="button">
         <div class="time-pill">${fmtTime(c.start)}<small>${fmtDate(c.start)}</small></div>
         <div class="info"><div class="title">${esc(c.title)}</div>
-          <div class="small muted">${c.cancelled ? 'בוטל' : `${taken}/${c.cap} רשומות`}${past && !c.cancelled ? (c.songs?.length ? ` · 🎵 ${c.songs.length} ${c.songs.length === 1 ? 'שיר' : 'שירים'}` : ' · <b style="color:var(--rose-deep)">חסרים שירים</b>') : ''}</div></div>
+          <div class="small muted">${c.cancelled ? 'בוטל' : `${taken}/${c.cap} רשומות · ${c.cap - taken > 0 ? `נשארו ${c.cap - taken} מקומות` : '<b>מלא</b>'}`}${past && !c.cancelled ? (c.songs?.length ? ` · 🎵 ${c.songs.length} ${c.songs.length === 1 ? 'שיר' : 'שירים'}` : ' · <b style="color:var(--rose-deep)">חסרים שירים</b>') : ''}</div></div>
       </div>`;
     }).join('') || '<div class="card muted center small">אין שיעורים קרובים</div>'}
 
