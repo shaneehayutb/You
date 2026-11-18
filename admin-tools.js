@@ -249,7 +249,7 @@ function shAdminClass2({ id }) {
     <button class="btn block soft" data-act="adSongAdd" data-id="${c.id}">+ הוספת שיר</button>
 
     ${c.cancelled ? '<div class="note warn">השיעור בוטל</div>' : c.start > now() ? `
-      <button class="btn block ghost" data-act="adminCancel" data-id="${c.id}" style="color:var(--rose-deep)">ביטול השיעור (מחזיר לכולן לכרטיסייה)</button>` : ''}
+      <button class="btn block ghost" data-act="adminCancel" data-id="${c.id}" style="color:var(--rose-deep)">ביטול השיעור (כל הרשומות יקבלו הודעה)</button>` : ''}
   </div>`;
 }
 
