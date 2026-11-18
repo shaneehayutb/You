@@ -593,7 +593,7 @@ function routeAfterSync() {
   S.guest = false;
   // שחר (מנהלת) לא עוברת את תהליך ההרשמה של הלקוחות — ישר למסך הניהול
   if (S.isAdmin) { S.admin = true; return go({ screen: null, tab: 'admin' }); }
-  if (u.age == null) { ui.form = { ...ui.form, auth: u.auth, name: ui.form.name || u.name, email: u.email || ui.form.email }; return go({ screen: 'meet' }); }
+  if (u.age == null) { ui.form = { ...ui.form, auth: u.auth, name: ui.form.name || u.name, nameFromApple: !!(u.auth === 'apple' && (ui.form.name || u.name || '').trim().length >= 2), email: u.email || ui.form.email }; return go({ screen: 'meet' }); }
   if (!u.health) return go({ screen: 'health' });
   if (!u.termsAt || termsOutdated()) return go({ screen: 'terms' });
   go({ screen: null, tab: S.admin ? 'admin' : 'home' });
@@ -641,7 +641,7 @@ function vMeet() {
   <div class="stack fade-in">
     <h1>נעים להכיר 🤍</h1>
     <p class="muted">כמה דברים קטנים, כדי ששחר תדע מי מגיעה.</p>
-    ${f.auth === 'apple' ? '' : `<label class="field"><span>איך קוראים לך?</span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name" placeholder="שם מלא"></label>`}
+    ${f.auth === 'apple' && f.nameFromApple ? '' : `<label class="field"><span>איך קוראים לך?</span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name" placeholder="שם מלא"></label>`}
     <label class="field"><span>בת כמה את? <small class="muted">(נדרש להצהרת הבריאות)</small></span><input class="input" id="f-age" type="number" inputmode="numeric" min="14" max="99" value="${esc(f.age)}"></label>
     <button class="btn block" data-act="meet">המשך</button>
   </div>`;
@@ -1461,7 +1461,7 @@ document.addEventListener('click', e => {
       ui.form = { auth: id, demoEmail: true, email: id === 'apple' ? 'your.name@privaterelay.appleid.com' : 'your.name@gmail.com' };
       return go({ screen: 'meet' });
     case 'meet': {
-      const apple = ui.form.auth === 'apple';
+      const apple = ui.form.auth === 'apple' && !!ui.form.nameFromApple;   // באפל בדפדפן השם לא תמיד מגיע — אז שואלים
       const name = apple ? (ui.form.name || '') : val('f-name'), age = val('f-age');
       Object.assign(ui.form, { name, age });
       if (!apple && name.length < 2) return toast('איך קוראים לך?');
