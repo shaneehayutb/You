@@ -67,6 +67,7 @@ const ERR_HE = {
   client_health_missing: 'היא עוד לא מילאה הצהרת בריאות (או חסר אישור רפואי)',
   client_already_booked: 'היא כבר רשומה לשיעור הזה',
   bad_input: 'בדקי את הפרטים',
+  trial_used: 'כבר השתמשת בשיעור הניסיון הזה. אפשר לבחור שיעור בודד או מנוי 🤍',
   already_subscribed: 'כבר יש לך מנוי פעיל. אפשר לשנות מסלול מתוך ניהול המנוי',
   no_subscription: 'לא נמצא מנוי פעיל',
   subs_unavailable: 'המנויים עוד לא זמינים',
@@ -164,7 +165,7 @@ const API = {
     } : null;
     S.purchases = purch.filter(p => !String(p.product_id).startsWith('sub_')).map(p => ({ id: p.id, productId: p.product_id, name: pname(p.product_id), credits: p.credits, remaining: p.remaining, price: p.price_ils, at: ts(p.purchased_at), expiresAt: ts(p.expires_at) }));
     S.classes = classes.map(c => ({
-      id: c.id, seriesId: c.series_id, title: c.title, note: c.note || '', start: ts(c.starts_at), dur: c.duration_min, cap: c.capacity,
+      id: c.id, seriesId: c.series_id, kind: c.kind || 'dance', title: c.title, note: c.note || '', start: ts(c.starts_at), dur: c.duration_min, cap: c.capacity,
       cancelled: !!c.cancelled_at,
       songs: Array.isArray(c.songs) && c.songs.length ? c.songs
         : c.song_title ? [{ title: c.song_title, artist: c.song_artist || '', url: c.song_url || spotifySearch(c.song_title, c.song_artist || '') }] : [],
@@ -209,7 +210,7 @@ const API = {
     const taken = Object.fromEntries(avail.map(a => [a.id, a.taken]));
     S.isAdmin = false; S.admin = false; S.user = null;
     S.purchases = []; S.bookings = []; S.notices = [];
-    S.classes = classes.map(c => ({ id: c.id, seriesId: c.series_id, title: c.title, note: c.note || '', start: ts(c.starts_at), dur: c.duration_min, cap: c.capacity, cancelled: !!c.cancelled_at, songs: [], others: taken[c.id] || 0 }));
+    S.classes = classes.map(c => ({ id: c.id, seriesId: c.series_id, kind: c.kind || 'dance', title: c.title, note: c.note || '', start: ts(c.starts_at), dur: c.duration_min, cap: c.capacity, cancelled: !!c.cancelled_at, songs: [], others: taken[c.id] || 0 }));
     if (settings?.whatsapp) S.whatsapp = settings.whatsapp;
     if (settings?.texts) S.texts = settings.texts;
     if (typeof applyProducts === 'function') applyProducts(prods.map(p => ({ id: p.id, price: p.price_ils, credits: p.credits, days: p.valid_days })));

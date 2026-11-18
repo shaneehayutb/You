@@ -946,7 +946,7 @@ function applyProducts(list) {
     Object.assign(p, { price: n.price, credits: n.credits, days: n.days });
     const per = Math.round(p.price / p.credits);
     const valid = p.days % 30 === 0 && p.days >= 60 ? `${p.days / 30 === 2 ? 'חודשיים' : `${p.days / 30} חודשים`}` : `${p.days} יום`;
-    p.note = p.credits === 1 ? `בתוקף ${valid}` : `${per} ₪ לשיעור · בתוקף ${valid}`;
+    p.note = p.trial ? `פעם אחת · לשיעור ${p.kind === 'flex' ? 'גמישות' : 'ריקוד'} · בתוקף ${valid}` : p.credits === 1 ? `בתוקף ${valid}` : `${per} ₪ לשיעור · בתוקף ${valid}`;
   }
 }
 if (!LIVE && S.productsOverride) applyProducts(S.productsOverride);

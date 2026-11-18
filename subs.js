@@ -143,10 +143,14 @@
         <div class="count" style="font-size:20px">${p.emoji}</div>
         <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">${esc(p.sub)}${p.soon ? ` · נפתח ב-${fullDate(p.from)}` : ''}</p></div>
         <div class="price">${p.price}₪<small class="tiny muted" style="display:block;font-weight:400">לחודש</small></div></div>`).join('')}
-      <p class="small muted" style="margin-top:6px">רוצה רק לנסות?</p>`}
+      ${CONFIG.products.some(p => p.trial && !trialUsed(p.id)) ? '<p class="small muted" style="margin-top:6px">רוצה רק לנסות?</p>' : ''}
+      ${CONFIG.products.filter(p => p.trial && !trialUsed(p.id)).map(p => `<div class="card product" data-act="pick" data-id="${p.id}" role="button">
+        <div class="count" style="font-size:20px">${p.kind === 'flex' ? '🧘‍♀️' : '💃'}</div>
+        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">פעם אחת · בתוקף ${p.days} יום</p></div>
+        <div class="price">${p.price}₪</div></div>`).join('')}`}
       ${single ? `<div class="card product" data-act="pick" data-id="${single.id}" role="button">
         <div class="count">1</div>
-        <div class="grow"><h3>שיעור בודד</h3><p class="small muted">לכל שיעור במערכת</p></div>
+        <div class="grow"><h3>שיעור בודד</h3><p class="small muted">לשיעור ריקוד · בתוקף ${single.days} יום</p></div>
         <div class="price">${single.price}₪</div></div>` : ''}
       ${s ? '<button class="link small" data-act="sbManage">לניהול המנוי ‹</button>' : ''}
     </div>`;

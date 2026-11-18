@@ -29,9 +29,11 @@ const CONFIG = {
   horizonDays: 60,     // שיעורים קבועים מוצגים תמיד חודשיים קדימה
   healthValidYears: 2, // הצהרת בריאות מתחדשת כל שנתיים (כמו בטופס הרשמי)
   products: [
-    { id: 'single', name: 'שיעור בודד',  credits: 1,  price: 75,  days: 21,  note: 'בתוקף 21 יום' },
-    { id: 'five',   name: 'כרטיסיית 5',  credits: 5,  price: 350, days: 60,  payments: 2, note: '70 ₪ לשיעור · בתוקף חודשיים' },
-    { id: 'ten',    name: 'כרטיסיית 10', credits: 10, price: 670, days: 120, payments: 3, note: '67 ₪ לשיעור · בתוקף 4 חודשים', featured: true },
+    { id: 'single', name: 'שיעור בודד',  credits: 1,  price: 75,  days: 21,  note: 'בתוקף 21 יום', kind: 'dance' },
+    { id: 'trial_dance', name: 'שיעור ניסיון ריקוד', credits: 1, price: 75, days: 30, note: 'פעם אחת · לשיעור ריקוד', kind: 'dance', trial: true },
+    { id: 'trial_flex',  name: 'שיעור ניסיון גמישות', credits: 1, price: 60, days: 30, note: 'פעם אחת · לשיעור גמישות', kind: 'flex', trial: true },
+    { id: 'five',   name: 'כרטיסיית 5',  credits: 5,  price: 350, days: 60,  payments: 2, kind: 'dance', note: '70 ₪ לשיעור · בתוקף חודשיים' },
+    { id: 'ten',    name: 'כרטיסיית 10', credits: 10, price: 670, days: 120, payments: 3, kind: 'dance', note: '67 ₪ לשיעור · בתוקף 4 חודשים', featured: true },
   ],
   milestones: [
     { n: 1,  label: 'הצעד הראשון' },
@@ -227,7 +229,12 @@ const myBooking = c => S.bookings.find(b => b.classId === c.id && b.status === '
 const spotsLeft = c => c.cap - c.others - (myBooking(c) ? 1 : 0);
 const activePurchases = () => S.purchases.filter(p => p.remaining > 0 && p.expiresAt > now()).sort((a, b) => a.expiresAt - b.expiresAt);
 const totalCredits = () => activePurchases().reduce((s, p) => s + p.remaining, 0);
-const pickPurchase = c => activePurchases().find(p => p.expiresAt > c.start);
+// כרטיסייה מתאימה: בתוקף ביום השיעור, ומאותו סוג (ריקוד / גמישות). הוספה ידנית מתאימה לכל שיעור
+const classKind = c => c.kind || (/גמישות/.test(c.title) ? 'flex' : 'dance');
+const purchaseKind = p => CONFIG.products.find(x => x.id === p.productId)?.kind || null;
+const pickPurchase = c => activePurchases().find(p => p.expiresAt > c.start && (!purchaseKind(p) || purchaseKind(p) === classKind(c)));
+// שיעור ניסיון שכבר נקנה — לא מוצג שוב
+const trialUsed = id => S.purchases.some(p => p.productId === id);
 const product = id => CONFIG.products.find(p => p.id === id);
 const isOnboarded = () => S.user && S.user.health && S.user.termsAt;
 const needsCertMissing = () => !!(S.user?.health?.needsCert && !S.user.health.cert);
@@ -258,7 +265,7 @@ function book(c) {
   if (spotsLeft(c) <= 0) return toast('השיעור הזה כבר מלא');
   if (needsCertMissing()) return openSheet({ type: 'cert' });
   const p = pickPurchase(c);
-  if (!p) { toast('אין לך שיעורים בכרטיסייה — בואי נרכוש 💗'); return openSheet({ type: 'shop' }); }
+  if (!p) { toast(totalCredits() > 0 ? `הכרטיסייה שלך לא מתאימה לשיעור ${classKind(c) === 'flex' ? 'גמישות' : 'ריקוד'} — בואי נבחר 💗` : 'אין לך שיעורים בכרטיסייה — בואי נרכוש 💗'); return openSheet({ type: 'shop' }); }
   const first = isFirstTimer();
   const done = () => first ? openSheet({ type: 'firstClass', id: c.id }) : null;
   if (LIVE) return liveDo(() => API.book(c.id), first ? null : `נרשמת ל${c.title}! נתראה ${relDay(c.start)} ✨`).then(done);
@@ -1147,7 +1154,7 @@ function shShop() {
   return `<div class="stack">
     <h1>לרכישת שיעורים</h1>
     <p class="muted">בחרי מה מתאים לך. התשלום מאובטח דרך תקבול.</p>
-    ${CONFIG.products.map(p => `
+    ${CONFIG.products.filter(p => !(p.trial && trialUsed(p.id))).map(p => `
       <div class="card product ${p.featured ? 'featured' : ''}" data-act="pick" data-id="${p.id}" role="button">
         ${p.featured ? '<span class="badge">הכי משתלם</span>' : ''}
         <div class="count">${p.credits}</div>
