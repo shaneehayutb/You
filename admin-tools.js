@@ -311,7 +311,8 @@ function shStudent({ id }) {
       <a class="btn sm" href="${waLink(s.phone)}" target="_blank" rel="noopener">וואטסאפ</a>
       <span class="small muted" dir="ltr">${esc(s.phone)}</span>
     </div>
-    ${s.email ? `<div class="row" style="gap:8px;margin-top:-6px"><span class="tiny muted">מייל לקבלות:</span>
+    ${s.email && /privaterelay\.appleid\.com$/i.test(s.email) ? `<div class="note" style="margin-top:-6px">📧 המייל שלה מוסתר על ידי אפל, ולכן קבלות לא מגיעות אליה. כדאי לבקש ממנה לעדכן מייל בפרופיל באפליקציה.</div>` : ''}
+    ${s.email && !/privaterelay\.appleid\.com$/i.test(s.email) ? `<div class="row" style="gap:8px;margin-top:-6px"><span class="tiny muted">מייל לקבלות:</span>
       <span class="small" dir="ltr" style="user-select:all;word-break:break-all">${esc(s.email)}</span>
       <button class="btn sm ghost" data-act="adCopy" data-v="${esc(s.email)}">העתקה</button></div>` : ''}
     ${LIVE ? `<button class="btn block soft" data-act="adFile" data-id="${s.id}">📄 תיק לקוחה: הצהרת בריאות, תקנון וחתימות</button>` : ''}

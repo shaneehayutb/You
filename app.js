@@ -237,6 +237,8 @@ const trialUsed = id => S.purchases.some(p => p.productId === id);
 const product = id => CONFIG.products.find(p => p.id === id);
 // תקנון חדש שפורסם אחרי שהלקוחה אישרה — צריך לאשר שוב (שחר לא)
 const termsOutdated = () => !!(S.user?.termsAt && S.termsVersion && S.user.termsAt < S.termsVersion && !S.isAdmin);
+// מייל מוסתר של אפל ("Hide My Email"): קבלות מתקבול לא מגיעות אליו
+const isRelayEmail = e => /privaterelay\.appleid\.com$/i.test(String(e || '').trim());
 const isOnboarded = () => S.user && S.user.health && S.user.termsAt && !termsOutdated();
 const needsCertMissing = () => !!(S.user?.health?.needsCert && !S.user.health.cert);
 /** שיעורים שהיא הייתה בהם, מהחדש לישן */
@@ -678,9 +680,12 @@ function vContact() {
     <h1>איך נשמור על קשר?</h1>
     <p class="muted">לשם יגיעו התזכורות לשיעורים והקבלות. בלי ספאם, מבטיחות.</p>
     <label class="field"><span>טלפון <small class="muted">(לא חובה)</small></span><input class="input" id="f-phone" type="tel" inputmode="tel" value="${esc(f.phone)}" autocomplete="tel" dir="ltr" style="text-align:right"></label>
-    ${prov && f.email
+    ${prov && f.email && !isRelayEmail(f.email)
       ? `<div class="note row"><span class="grow">האימייל שלך, מ-${prov}:<br><b dir="ltr">${esc(f.email)}</b></span></div>
          <p class="tiny muted">אפשר לשנות אותו אחר כך בפרופיל.${f.demoEmail ? ' (בהדגמה זו כתובת לדוגמה)' : ''}</p>`
+      : isRelayEmail(f.email) && !f.demoEmail
+      ? `<div class="note">אפל הסתירו את המייל שלך, ולכן הקבלות לא יגיעו אלייך. לאיזה מייל לשלוח לך את הקבלות?</div>
+         <label class="field"><span>אימייל לקבלות</span><input class="input" id="f-email" type="email" value="" autocomplete="email" dir="ltr" style="text-align:right" placeholder="name@gmail.com"></label>`
       : `<label class="field"><span>אימייל</span><input class="input" id="f-email" type="email" value="${esc(f.email)}" autocomplete="email" dir="ltr" style="text-align:right"></label>`}
     <button class="btn block" data-act="contact">המשך</button>
   </div>`;
@@ -868,6 +873,14 @@ function noticesBlock() {
   </div>`).join('');
 }
 
+/** לקוחה עם מייל מוסתר של אפל: בקשה לעדכן מייל אמיתי לקבלות */
+function relayEmailCard() {
+  if (!LIVE || !S.user || S.isAdmin || !isRelayEmail(S.user.email)) return '';
+  return `<div class="card notice fade-in"><b>לאן לשלוח לך קבלות? 🧾</b>
+    <p class="small" style="margin-top:4px">אפל הסתירו את המייל שלך, ולכן הקבלות לא מגיעות אלייך.</p>
+    <button class="btn sm" style="margin-top:8px" data-act="editProfile">עדכון מייל</button></div>`;
+}
+
 function vHome() {
   const mine = S.classes.filter(c => c.start > now() && myBooking(c));
   const hour = new Date().getHours();
@@ -875,7 +888,7 @@ function vHome() {
   return `${header()}
     <h1>${hello}, ${esc(S.user?.name.split(' ')[0] || '')} 🤍</h1>
     <p class="muted" style="margin:4px 0 20px">מה הגוף שלך מבקש השבוע?</p>
-    ${noticesBlock()}
+    ${noticesBlock()}${relayEmailCard()}
     ${S.user && S.user.termsAt && !S.user.photo ? `<div class="card stack fade-in">
       <h3>שאלה קטנה על צילומים 📷</h3>
       <p class="small">${PHOTO_TEXT}</p>
@@ -1322,7 +1335,8 @@ function shEditProfile() {
     <h1>עריכת פרטים</h1>
     <label class="field"><span>שם</span><input class="input" id="ep-name" value="${esc(u.name)}"></label>
     <label class="field"><span>טלפון <small class="muted">(לא חובה)</small></span><input class="input" id="ep-phone" type="tel" value="${esc(u.phone)}" dir="ltr" style="text-align:right"></label>
-    <label class="field"><span>אימייל</span><input class="input" id="ep-email" type="email" value="${esc(u.email)}" dir="ltr" style="text-align:right"></label>
+    ${isRelayEmail(u.email) ? '<div class="note">המייל שלך מוסתר על ידי אפל, ולכן הקבלות לא מגיעות אלייך. כתבי כאן מייל אמיתי.</div>' : ''}
+    <label class="field"><span>אימייל${isRelayEmail(u.email) ? ' לקבלות' : ''}</span><input class="input" id="ep-email" type="email" value="${isRelayEmail(u.email) ? '' : esc(u.email)}" dir="ltr" style="text-align:right" placeholder="name@gmail.com"></label>
     <button class="btn block" data-act="saveProfile">שמירה</button>
   </div>`;
 }
@@ -1417,7 +1431,7 @@ document.addEventListener('click', e => {
     case 'delVideo': return removeVideo(id);
     case 'editProfile': return openSheet({ type: 'editProfile' });
     case 'saveProfile': {
-      const name = val('ep-name'), phone = val('ep-phone'), email = val('ep-email');
+      const name = val('ep-name'), phone = val('ep-phone'), email = val('ep-email') || (isRelayEmail(S.user.email) ? S.user.email : '');
       if (name.length < 2) return toast('חסר שם');
       if (phone && !validPhone(phone)) return toast('נראה שחסר משהו במספר הטלפון');
       if (email && !validEmail(email)) return toast('כתובת האימייל לא נראית תקינה');
@@ -1479,7 +1493,9 @@ document.addEventListener('click', e => {
     case 'aboutNext':
       return go({ screen: 'contact' });
     case 'contact': {
+      const relay = isRelayEmail(ui.form.email) && !ui.form.demoEmail;
       const phone = val('f-phone'), email = document.getElementById('f-email') ? val('f-email') : ui.form.email;
+      if (relay && (!validEmail(email) || isRelayEmail(email))) return toast('כתבי מייל שאליו נשלח את הקבלות 🙂');
       Object.assign(ui.form, { phone, email });
       if (phone && !validPhone(phone)) return toast('נראה שחסר משהו במספר הטלפון');
       if (email && !validEmail(email)) return toast('כתובת האימייל לא נראית תקינה');
