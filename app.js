@@ -611,6 +611,8 @@ async function boot() {
     if (!(await API.session())) return go({ screen: 'welcome' });
     await API.sync();
     routeAfterSync();
+    // חזרה מתשלום בחלון מלא (ביט)
+    if (location.hash === '#paid') { history.replaceState(null, '', location.pathname); toast('התשלום התקבל. השיעורים שלך מחכים לך 💗'); }
   } catch (e) { toast(errHe(e) + ' · ' + (e?.message || e)); go({ screen: 'welcome' }); }
 }
 
@@ -1245,8 +1247,15 @@ function shPay({ id, url }) {
     <h1>${esc(p.name)} · ${p.price}₪</h1>
     <iframe class="pay-frame" src="${esc(url)}" title="תשלום מאובטח" allow="payment"></iframe>
     <p class="small muted center">🔒 תשלום מאובטח בתקן PCI דרך תקבול</p>
+    ${IS_NATIVE ? '' : `<a class="btn block ghost" href="${esc(url)}" target="_blank" rel="noopener">תשלום בביט? פתיחת דף התשלום בחלון מלא</a>
+    <p class="tiny muted center">אחרי התשלום חוזרים לכאן, והשיעור יופיע לבד.</p>`}
   </div>`;
 }
+// חזרה לאפליקציה אחרי תשלום בחלון אחר (ביט): בודקים אם התשלום עבר
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !LIVE || ui.sheet?.type !== 'pay' || !ui.sheet.uniqId || String(ui.sheet.id || '').startsWith('sub:')) return;
+  try { if (await API.payCheck(ui.sheet.uniqId) === 'paid') finishPay(ui.sheet.uniqId); } catch { /* */ }
+});
 
 // תקבול שולח הודעה מתוך הטופס: מספר = גובה, אובייקט paymentreplay = תוצאת התשלום
 let payDone = false;
