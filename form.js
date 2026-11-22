@@ -71,7 +71,7 @@ function render() {
     <label class="field"><span>שם מלא</span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name"></label>
     <label class="field"><span>גיל</span><input class="input" id="f-age" type="number" inputmode="numeric" min="14" max="99" value="${esc(f.age)}"></label>
     <label class="field"><span>טלפון</span><input class="input" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" value="${esc(f.phone)}"></label>
-    <label class="field"><span>אימייל <small class="muted">(לקבלה)</small></span><input class="input" id="f-email" type="email" autocomplete="email" dir="ltr" style="text-align:right" value="${esc(f.email)}"></label>
+    <label class="field"><span>אימייל <small class="muted">(לקבלות ולכניסה לאפליקציה)</small></span><input class="input" id="f-email" type="email" autocomplete="email" dir="ltr" style="text-align:right" value="${esc(f.email)}"></label>
 
     <p class="f-step">2 · הצהרת בריאות</p>
     <p class="muted small">המידע נשמר באופן מאובטח, ורק שחר רואה אותו.</p>
@@ -183,6 +183,7 @@ async function send() {
   const age = +f.age;
   if (!(age >= 10 && age <= 99)) { mark(document.getElementById('f-age')); return toast('בת כמה את?'); }
   if ((f.phone || '').replace(/\D/g, '').length < 9) { mark(document.getElementById('f-phone')); return toast('מה מספר הטלפון?'); }
+  if (!/^\S+@\S+\.\S+$/.test((f.email || '').trim())) { mark(document.getElementById('f-email')); return toast('מה כתובת המייל שלך?'); }
   const miss = f.answers.findIndex(x => x === null);
   if (miss >= 0) { mark(document.getElementById('hq-' + miss)); return toast('נשארו שאלות בלי תשובה בהצהרת הבריאות'); }
   if (age < 18 && (!(f.parent || '').trim() || !f.pok)) { mark(document.getElementById('f-parent')); return toast('צריך הסכמה של הורה'); }
