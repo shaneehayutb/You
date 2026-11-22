@@ -222,7 +222,7 @@ function shAdminClass2({ id }) {
       const inIds = new Set(roster.map(r => r.id));
       const opts = students().filter(x => !x.blocked && !inIds.has(x.id)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
       return opts.length ? `<details class="card" style="margin:0;padding:10px 14px"><summary class="small"><b>+ רישום לקוחה לשיעור</b></summary>
-        <p class="tiny muted" style="margin:6px 0">יורד לה שיעור מהכרטיסייה${c.start > now() ? ', והיא מקבלת הודעה' : ''}. אם אין לה שיעורים, קודם מוסיפים ידנית בכרטיס שלה.</p>
+        <p class="tiny muted" style="margin:6px 0">יורד לה שיעור מהכרטיסייה${c.start > now() ? ', והיא מקבלת הודעה' : ''}. ${classKind(c) === 'flex' ? 'אם אין לה שיעור לגמישות, אפשר לרשום אותה כשיעור ניסיון גמישות (פעם אחת).' : 'אם אין לה שיעורים, קודם מוסיפים ידנית בכרטיס שלה.'}</p>
         <select class="input" id="bf-user"><option value="">בחירת לקוחה</option>${opts.map(x => {
           const left = x.purchases.filter(p => p.remaining > 0 && p.expiresAt > c.start).reduce((t, p) => t + p.remaining, 0);
           return `<option value="${x.id}">${esc(x.name)} · ${left ? `${left} בכרטיסייה` : 'אין שיעורים'}</option>`; }).join('')}</select>
@@ -914,7 +914,19 @@ document.addEventListener('click', e => {
       if (!uidSel) return toast('בחרי לקוחה');
       const s = students().find(x => x.id === uidSel);
       if (!confirm(`לרשום את ${s ? s.name : 'הלקוחה'} לשיעור? יורד לה שיעור מהכרטיסייה`)) return;
-      if (LIVE) return liveDo(async () => { await API.bookFor(uidSel, id); S.adminData = await API.adminLoad(); ui.sheet.roster = await API.classRoster(id); }, 'נרשמה לשיעור 🤍', false).then(() => renderSheet());
+      if (LIVE) return (async () => {
+        const refresh = async () => { S.adminData = await API.adminLoad(); ui.sheet.roster = await API.classRoster(id); renderSheet(); };
+        try { await API.bookFor(uidSel, id); await refresh(); return toast('נרשמה לשיעור 🤍'); }
+        catch (e) {
+          const m = String(e?.message || '');
+          // אין לה שיעור לגמישות → פעם ראשונה נרשמת כשיעור ניסיון גמישות
+          if (!m.includes('client_no_credits') || classKind(cls(id) || {}) !== 'flex') return toast(errHe(e));
+          const v = prompt(`ל${s ? s.name : 'לקוחה'} אין שיעור לגמישות.\nלרשום אותה כשיעור ניסיון גמישות? (פעם אחת לכל לקוחה)\n\nכמה שילמה? (₪)`, String(product('trial_flex')?.price ?? 60));
+          if (v == null) return;
+          try { await API.adminBookTrial(uidSel, id, Math.max(0, Math.round(+String(v).replace(/[^\d.]/g, '') || 0))); await refresh(); return toast('נרשמה לשיעור ניסיון גמישות 🤍'); }
+          catch (e2) { return toast(String(e2?.message || '').includes('client_trial_used') ? 'היא כבר עשתה שיעור ניסיון גמישות. כדי להמשיך היא צריכה מנוי' : errHe(e2)); }
+        }
+      })();
       return toast('בהדגמה: נרשמה לשיעור 🤍');
     }
     case 'adExtend': {

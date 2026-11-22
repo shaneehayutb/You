@@ -441,6 +441,7 @@ const API = {
   grantCredits(userId, credits, days, note, price = 0) { return call(sb.rpc('admin_grant_credits', { p_user: userId, p_credits: credits, p_days: days, p_note: note || null, p_price: price || 0 })); },
   adjustRemaining(purchaseId, delta) { return call(sb.rpc('admin_adjust_remaining', { p_purchase: purchaseId, p_delta: delta })); },
   bookFor(userId, classId) { return call(sb.rpc('admin_book_for', { p_user: userId, p_class: classId })); },
+  adminBookTrial(userId, classId, price) { return call(sb.rpc('admin_book_trial', { p_user: userId, p_class: classId, p_price: price })); },
   // זיכוי דרך תקבול (השרת בודק שזו שחר, מבצע בתקבול ורק אז רושם)
   async refund(purchaseId, amount) {
     const { data, error } = await sb.functions.invoke('takbull', { body: { action: 'refund', purchaseId, amount } });
