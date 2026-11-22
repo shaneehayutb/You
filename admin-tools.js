@@ -315,7 +315,7 @@ function shStudent({ id }) {
     ${s.email && !/privaterelay\.appleid\.com$/i.test(s.email) ? `<div class="row" style="gap:8px;margin-top:-6px"><span class="tiny muted">מייל לקבלות:</span>
       <span class="small" dir="ltr" style="user-select:all;word-break:break-all">${esc(s.email)}</span>
       <button class="btn sm ghost" data-act="adCopy" data-v="${esc(s.email)}">העתקה</button></div>` : ''}
-    ${LIVE ? `<button class="btn block soft" data-act="adFile" data-id="${s.id}">📄 תיק לקוחה: הצהרת בריאות, תקנון וחתימות</button>` : ''}
+    ${LIVE ? `<button class="btn block soft" data-act="adFile" data-id="${s.id}">📄 תיק לקוחה: שיעורים, הצהרת בריאות ותקנון</button>` : ''}
     <div class="row" style="gap:12px">
       <div class="card grow center" style="margin:0"><p class="muted small">שיעורים שרקדה</p><h2>${s.attended || 0}</h2></div>
       <div class="card grow center" style="margin:0"><p class="muted small">שיעור אחרון</p><h2 style="font-size:20px">${s.lastAt ? fmtDate(s.lastAt) : '—'}</h2></div>
@@ -687,7 +687,18 @@ function shClientFile({ id }) {
   const s = students().find(x => x.id === id), f = S.clientFile?.[id];
   const back = `<button class="link small" data-act="adStudent" data-id="${id}" style="align-self:flex-start">→ חזרה ל${esc(s?.name || 'לקוחה')}</button>`;
   if (!f) return `<div class="stack">${back}<p class="muted">טוען…</p></div>`;
-  const { prof, hs, subs, forms } = f;
+  const { prof, hs, subs, forms } = f, books = f.books || [];
+  // שיעורים: קרובים (רשומה) והיסטוריה
+  const BST = { booked: 'הגיעה', attended: 'הגיעה', no_show: 'לא הגיעה', cancelled: 'ביטלה בזמן', late_cancel: 'ביטול מאוחר (נספר)', studio_cancelled: 'השיעור בוטל' };
+  const pname = b => b.subscription_id ? 'מנוי' : (s?.purchases || []).find(p => p.id === b.purchase_id)?.name || (b.purchase_id ? 'כרטיסייה' : '');
+  const when = b => { const d = new Date(b.classes.starts_at); return `${dayNames[d.getDay()]} ${fmtDate(d)}.${String(d.getFullYear()).slice(2)} · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`; };
+  const upcoming = books.filter(b => Date.parse(b.classes.starts_at) > now() && b.status === 'booked' && !b.classes.cancelled_at);
+  const past = books.filter(b => !upcoming.includes(b)).reverse();
+  const row = (b, st) => `<div class="list-row"><span class="grow">${esc(b.classes.title)}<span class="tiny muted" style="display:block">${when(b)}${pname(b) ? ' · ' + esc(pname(b)) : ''}</span></span><span class="small">${st}</span></div>`;
+  const lessons = `<h3>רשומה לשיעורים</h3>
+    <div class="card" style="padding:2px 14px;margin:0">${upcoming.map(b => row(b, '<b>רשומה ✓</b>')).join('') || '<p class="small muted" style="padding:10px 0">לא רשומה לשיעורים קרובים</p>'}</div>
+    <h3>היסטוריית שיעורים</h3>
+    <div class="card" style="padding:2px 14px;margin:0">${past.map(b => row(b, Date.parse(b.classes.starts_at) > now() && b.status !== 'booked' ? esc(BST[b.status] || b.status) : b.classes.cancelled_at ? 'השיעור בוטל' : esc(BST[b.status] || b.status))).join('') || '<p class="small muted" style="padding:10px 0">עוד אין שיעורים</p>'}</div>`;
   const yn = v => v === true ? '<b style="color:var(--rose-deep)">כן</b>' : v === false ? 'לא' : (typeof v === 'string' && v.trim()) ? `<b>${esc(v)}</b>` : '—';
   const health = hs.map((h, i) => `<div class="card" style="margin:0">
       <div class="row between"><b>${i === 0 ? 'הצהרת בריאות' : 'הצהרה קודמת'}</b>${new Date(h.valid_until) > new Date() && i === 0 ? '<span class="tag green">בתוקף</span>' : '<span class="tag">לא בתוקף</span>'}</div>
@@ -706,6 +717,8 @@ function shClientFile({ id }) {
   return `<div class="stack">${back}
     <h1>📄 תיק לקוחה</h1>
     <p class="muted small">${esc(prof?.full_name || s?.name || '')} · נרשמה לאפליקציה ב-${prof?.created_at ? fdt(prof.created_at) : '—'}</p>
+
+${lessons}
 
     <h3>בריאות</h3>${health}
 

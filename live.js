@@ -348,16 +348,17 @@ const API = {
   },
   // תיק לקוחה (שחר): כל ההצהרות, התקנון, הצילומים, המנויים וטופס מהאתר
   async clientFile(userId) {
-    const [prof, hs, subs] = await Promise.all([
+    const [prof, hs, subs, books] = await Promise.all([
       call(sb.from('profiles').select('full_name,phone,email,age,parent_name,photo_consent,photo_consent_at,terms_accepted_at,created_at').eq('id', userId).single()),
       call(sb.from('health_declarations').select('*').eq('user_id', userId).order('signed_at', { ascending: false })),
       call(sb.from('subscriptions').select('plan_id,status,day,price_ils,created_at,started_at,ends_at,cancelled_at').eq('user_id', userId).in('status', ['active', 'cancelled', 'failed']).order('created_at', { ascending: false })),
+      call(sb.from('bookings').select('id,status,created_at,cancelled_at,purchase_id,subscription_id,classes(title,starts_at,cancelled_at)').eq('user_id', userId)).catch(() => []),
     ]);
     const digits = x => String(x || '').replace(/\D/g, '').slice(-9);
     const ph = digits(prof?.phone), em = String(prof?.email || '').toLowerCase();
     const forms = (ph || em) ? (await call(sb.from('intake_forms').select('*').order('created_at', { ascending: false }).limit(300)))
       .filter(f => (ph && digits(f.phone) === ph) || (em && String(f.email || '').toLowerCase() === em)) : [];
-    return { prof, hs, subs, forms };
+    return { prof, hs, subs, forms, books: books.filter(b => b.classes).sort((x, y) => Date.parse(x.classes.starts_at) - Date.parse(y.classes.starts_at)) };
   },
   async certUrl(path) {
     const { data, error } = await sb.storage.from('certs').createSignedUrl(path, 600);
