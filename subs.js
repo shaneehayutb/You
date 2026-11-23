@@ -135,24 +135,28 @@
   /* ---------- רכישה ---------- */
   function shSubShop() {
     const s = sub(), single = CONFIG.products.find(p => p.id === 'single') || CONFIG.products[0];
+    const trials = s ? [] : CONFIG.products.filter(p => p.trial && !trialUsed(p.id));
+    // קודם שיעור ניסיון ושיעור בודד, אחר כך המנויים
+    const singleCard = single ? `<div class="card product" data-act="pick" data-id="${single.id}" role="button">
+        <div class="count">1</div>
+        <div class="grow"><h3>שיעור בודד</h3><p class="small muted">לשיעור ריקוד · בתוקף ${single.days} יום</p></div>
+        <div class="price">${single.price}₪</div></div>` : '';
     return `<div class="stack">
       <h1>${s ? 'שיעור נוסף' : 'בחירת מנוי'}</h1>
-      ${s ? `<p class="muted">יש לך מנוי פעיל (${esc(plan(s.plan).name)}). רוצה להגיע לשיעור נוסף?</p>`
-          : `<p class="muted">מנוי חודשי שמתחדש לבד. המקום שלך נשמר בכל שבוע, ולא צריך להירשם כל פעם מחדש.</p>
+      ${s ? `<p class="muted">יש לך מנוי פעיל (${esc(plan(s.plan).name)}). רוצה להגיע לשיעור נוסף?</p>${singleCard}`
+          : `${trials.length ? '<p class="small muted">רוצה קודם לנסות?</p>' : ''}
+      ${trials.map(p => `<div class="card product" data-act="pick" data-id="${p.id}" role="button">
+        <div class="count" style="font-size:20px">${p.kind === 'flex' ? '🧘‍♀️' : '💃'}</div>
+        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">פעם אחת · בתוקף ${p.days} יום</p></div>
+        <div class="price">${p.price}₪</div></div>`).join('')}
+      ${singleCard}
+      <h3 style="margin-top:10px">מנוי חודשי</h3>
+      <p class="muted small" style="margin-top:4px">מנוי שמתחדש לבד. המקום שלך נשמר בכל שבוע, ולא צריך להירשם כל פעם מחדש.</p>
       ${plans().map(p => `<div class="card product ${p.best ? 'featured' : ''}" ${p.soon ? 'style="opacity:.55"' : `data-act="sbPick" data-id="${p.id}" role="button"`}>
         ${p.best && !p.soon ? '<span class="badge">הכי משתלם</span>' : ''}
         <div class="count" style="font-size:20px">${p.emoji}</div>
         <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">${esc(p.sub)}${p.soon ? ` · נפתח ב-${fullDate(p.from)}` : ''}</p></div>
-        <div class="price">${p.price}₪<small class="tiny muted" style="display:block;font-weight:400">לחודש</small></div></div>`).join('')}
-      ${CONFIG.products.some(p => p.trial && !trialUsed(p.id)) ? '<p class="small muted" style="margin-top:6px">רוצה רק לנסות?</p>' : ''}
-      ${CONFIG.products.filter(p => p.trial && !trialUsed(p.id)).map(p => `<div class="card product" data-act="pick" data-id="${p.id}" role="button">
-        <div class="count" style="font-size:20px">${p.kind === 'flex' ? '🧘‍♀️' : '💃'}</div>
-        <div class="grow"><h3>${esc(p.name)}</h3><p class="small muted">פעם אחת · בתוקף ${p.days} יום</p></div>
-        <div class="price">${p.price}₪</div></div>`).join('')}`}
-      ${single ? `<div class="card product" data-act="pick" data-id="${single.id}" role="button">
-        <div class="count">1</div>
-        <div class="grow"><h3>שיעור בודד</h3><p class="small muted">לשיעור ריקוד · בתוקף ${single.days} יום</p></div>
-        <div class="price">${single.price}₪</div></div>` : ''}
+        <div class="price">${p.price}₪<small class="tiny muted" style="display:block;font-weight:400">לחודש</small></div></div>`).join('')}`}
       ${s ? '<button class="link small" data-act="sbManage">לניהול המנוי ‹</button>' : ''}
     </div>`;
   }
