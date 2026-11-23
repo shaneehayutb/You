@@ -234,7 +234,7 @@ function shAdminClass2({ id }) {
     <textarea class="input" id="cm-body" rows="2" placeholder="מה רוצה לעדכן?"></textarea>
     <button class="btn block soft" data-act="adClassMsg" data-id="${c.id}">שליחה ל-${roster.length} ${roster.length === 1 ? 'רשומה' : 'רשומות'}</button>` : ''}
 
-    <h3>🎵 השירים מהשיעור</h3>
+${classKind(c) === 'flex' ? '' : `    <h3>🎵 השירים מהשיעור</h3>
     <p class="tiny muted" style="margin-top:4px">יופיעו לכל מי שהייתה בשיעור, ב"המסע שלי"${past ? '' : ' (אחרי השיעור)'}</p>
     ${songs.length ? `<div class="card" style="padding:2px 14px;margin:8px 0 0">${songs.map((sg, i) => `<div class="list-row">
         <span class="song-n">${i + 1}</span>
@@ -246,7 +246,7 @@ function shAdminClass2({ id }) {
       <label class="field grow"><span>אמן/ית</span><input class="input" id="sg-artist"></label>
     </div>
     <label class="field"><span>קישור לספוטיפיי (לא חובה)</span><input class="input" id="sg-url" dir="ltr" placeholder="https://open.spotify.com/track/…"></label>
-    <button class="btn block soft" data-act="adSongAdd" data-id="${c.id}">+ הוספת שיר</button>
+    <button class="btn block soft" data-act="adSongAdd" data-id="${c.id}">+ הוספת שיר</button>`}
 
     ${c.cancelled ? '<div class="note warn">השיעור בוטל</div>' : c.start > now() ? `
       <button class="btn block ghost" data-act="adminCancel" data-id="${c.id}" style="color:var(--rose-deep)">ביטול השיעור (כל הרשומות יקבלו הודעה)</button>` : ''}

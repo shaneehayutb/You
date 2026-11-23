@@ -968,7 +968,7 @@ function journeyEntry({ b, c }) {
     <div class="row between">
       <div><h3>${esc(c.title)}</h3><p class="small muted">${fmtDay(c.start)}</p></div>
     </div>
-    ${c.songs?.length ? `<p class="tiny muted" style="margin:10px 0 4px">${c.songs.length === 1 ? 'השיר מהשיעור' : `השירים מהשיעור (${c.songs.length})`}</p>`
+    ${classKind(c) === 'flex' && !c.songs?.length ? '' : c.songs?.length ? `<p class="tiny muted" style="margin:10px 0 4px">${c.songs.length === 1 ? 'השיר מהשיעור' : `השירים מהשיעור (${c.songs.length})`}</p>`
         + c.songs.map(sg => `<a class="song" href="${esc(sg.url)}" target="_blank" rel="noopener">${ICON.music}<span><b>${esc(sg.title)}</b>${sg.artist ? ` · ${esc(sg.artist)}` : ''}</span><small>בספוטיפיי ‹</small></a>`).join('')
       : '<p class="small muted" style="margin-top:10px">השירים מהשיעור יעלו בקרוב 🎶</p>'}
     ${b.video
