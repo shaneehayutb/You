@@ -33,7 +33,7 @@ function ensureDemoStudents() {
     const expiresAt = i === 8 ? now() - 5 * DAY : i === 2 ? now() + 6 * DAY : Math.max(at + prod.days * DAY, now() + 12 * DAY);
     return {
       id: 'st' + i, name: `${n} ${last[i]}`, phone: `05${2 + (i % 3)}-${String(4000000 + i * 137731).slice(0, 7)}`,
-      age: 24 + ((i * 7) % 30), joinedAt: i % 5 === 0 ? now() - (2 + i) * DAY : at - 20 * DAY, heard: heard[i % 4], blocked: false, photo: i % 6 === 1 ? 'no' : 'yes',
+      age: 24 + ((i * 7) % 30), joinedAt: i % 5 === 0 ? now() - (2 + i) * DAY : at - 20 * DAY, heard: heard[i % 4], blocked: false, termsAt: i === 4 ? null : now() - 30 * DAY, photo: i % 6 === 1 ? 'no' : 'yes',
       attended: i % 7 === 6 ? 0 : 3 + ((i * 5) % 22), lastAt: i % 7 === 6 ? null : now() - ((i * 9) % 40) * DAY, first: i % 7 === 6,
       health: i === 11 ? null : {
         dance: { joints: i % 5 === 1, surgery: i % 6 === 3, pregnant: i === 2 },
@@ -137,18 +137,24 @@ function students() {
 const activeCard = s => s.purchases.filter(p => p.remaining > 0 && p.expiresAt > now()).sort((a, b) => a.expiresAt - b.expiresAt)[0];
 
 /** מי צריכה תשומת לב: כרטיסייה נגמרת, פג תוקף, חסר אישור רפואי */
+// מנויה: מנוי פעיל (או מבוטל שעוד לא הסתיים)
+const subOf = s => (S.adminData?.subs || []).find(x => x.user_id === s.id && ['active', 'cancelled', 'failed'].includes(x.status) && (!x.ends_at || Date.parse(x.ends_at) > now()) && (!x.started_at || Date.parse(x.started_at) <= now()));
+// לקוחה פעילה = יש לה מנוי או כרטיסייה בתוקף
+const isActiveClient = s => !!(subOf(s) || activeCard(s));
+
+// "דורש תשומת לב": רק מה ששחר צריכה לטפל בו — הרשמה לא גמורה (תקנון / הצהרה / אישור רפואי), ומנויה שלא הגיעה
 function attention() {
   const out = [];
   for (const s of students()) {
-    if (s.blocked || s.archived) continue;
-    // מנויה פעילה לא צריכה "כרטיסייה" — לא מציקים לה על זה
-    const subbed = (S.adminData?.subs || []).some(x => x.user_id === s.id && ['active', 'cancelled', 'failed'].includes(x.status) && (!x.ends_at || Date.parse(x.ends_at) > now()));
-    const card = activeCard(s);
-    const fn = firstName(s.name);
-    if (s.health?.needsCert && !s.health.cert) out.push({ s, why: 'חסר אישור רפואי', msg: `היי ${fn} 🤍 רק תזכורת להעלות לאפליקציה אישור רפואי לפני השיעור הבא` });
-    else if (card && card.credits > 1 && card.remaining <= 1) out.push({ s, why: card.remaining ? 'נשאר שיעור אחד בכרטיסייה' : 'הכרטיסייה נגמרה', msg: `היי ${fn} 🤍 ראיתי שהכרטיסייה שלך כמעט נגמרה. אפשר לחדש באפליקציה מתי שנוח לך` });
-    else if (card && card.expiresAt - now() < 10 * DAY) out.push({ s, why: `הכרטיסייה פגה ב-${fmtDate(card.expiresAt)} (נשארו ${card.remaining})`, msg: `היי ${fn} 🤍 הכרטיסייה שלך בתוקף עד ${fmtDate(card.expiresAt)}, ונשארו בה ${card.remaining} שיעורים. מחכה לך בשיעור!` });
-    else if (!card && !subbed && s.lastAt > now() - 45 * DAY) out.push({ s, why: 'אין כרטיסייה פעילה', msg: `היי ${fn} 🤍 מתגעגעת! מתי חוזרת לרקוד?` });
+    if (s.blocked) continue;
+    const fn = firstName(s.name), why = [];
+    let msg = '';
+    if (!s.termsAt) { why.push('עוד לא אישרה תקנון'); msg ||= `היי ${fn} 🤍 כדי להשלים את ההרשמה צריך רק לאשר את התקנון באפליקציה`; }
+    else if (S.termsVersion && s.termsAt < S.termsVersion) { why.push('עוד לא אישרה את התקנון החדש'); msg ||= `היי ${fn} 🤍 עדכנתי את התקנון. אפשר לאשר אותו כשנכנסים לאפליקציה`; }
+    if (!s.health || (s.health.validUntil && s.health.validUntil < now())) { why.push('עוד לא מילאה הצהרת בריאות'); msg ||= `היי ${fn} 🤍 לפני השיעור צריך למלא הצהרת בריאות קצרה באפליקציה`; }
+    else if (s.health.needsCert && !s.health.cert) { why.push('חסר אישור רפואי'); msg ||= `היי ${fn} 🤍 רק תזכורת להעלות לאפליקציה אישור רפואי לפני השיעור הבא`; }
+    if (subOf(s) && s.noShowAt && s.noShowAt > now() - 30 * DAY) { why.push(`מנויה · לא הגיעה ב-${fmtDate(s.noShowAt)}`); msg ||= `היי ${fn} 🤍 התגעגעתי אלייך בשיעור! הכול בסדר?`; }
+    if (why.length) out.push({ s, why: why.join(' · '), msg });
   }
   return out;
 }
@@ -166,18 +172,18 @@ function vClients() {
   const list = students(), att = attention(), q = (ui.clientQ || '').trim();
   const loading = LIVE && !S.adminData;
   const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
-  const active = list.filter(s => !s.blocked && activeCard(s)).length;
+  const active = list.filter(s => !s.blocked && isActiveClient(s)).length;
   const fresh = list.filter(s => s.joinedAt >= m0.getTime()).length;
   const tab = ui.clientTab === 'archived' ? 'archived' : 'active';
-  const nArch = list.filter(s => s.archived).length, nAct = list.length - nArch;
-  // בחיפוש — מחפשות בכל הלקוחות; בלי חיפוש — רק ברשימה שנבחרה
-  const shown = list.filter(s => q ? true : tab === 'archived' ? s.archived : !s.archived)
+  const nAct = list.filter(isActiveClient).length, nArch = list.length - nAct;
+  // פעילות = מנוי או כרטיסייה בתוקף. בחיפוש — מחפשות בכל הלקוחות
+  const shown = list.filter(s => q ? true : tab === 'archived' ? !isActiveClient(s) : isActiveClient(s))
     .filter(s => !q || s.name.includes(q) || String(s.phone).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§'))
     .sort((a, b) => a.name.localeCompare(b.name, 'he'));
   return `${header('לקוחות')}
     <div class="stats">
       <div class="card center"><p class="muted small">כל הלקוחות</p><h2>${list.length}</h2></div>
-      <div class="card center"><p class="muted small">עם כרטיסייה פעילה</p><h2>${active}</h2></div>
+      <div class="card center"><p class="muted small">פעילות</p><h2>${active}</h2></div>
       <div class="card center"><p class="muted small">חדשות החודש</p><h2>${fresh}</h2></div>
     </div>
     <button class="btn block soft" style="margin-top:14px" data-act="adBroadcast">✉️ הודעה לכל הלקוחות</button>
@@ -200,8 +206,8 @@ function vClients() {
     <input class="input" id="cl-q" data-search="clients" value="${esc(q)}" placeholder="חיפוש לפי שם או טלפון">
     <div class="card" style="padding:2px 14px;margin-top:12px">
       ${shown.map(s => { const card = activeCard(s); return `<button class="list-row plain" data-act="adStudent" data-id="${s.id}" style="width:100%">
-        <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}${q && s.archived ? ' <span class="tag">לא פעילה</span>' : ''}
-          <p class="tiny muted">${card ? `${card.remaining} שיעורים · עד ${fmtDate(card.expiresAt)}` : 'אין כרטיסייה פעילה'}</p></div>
+        <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}${q && !isActiveClient(s) ? ' <span class="tag">לא פעילה</span>' : ''}
+          <p class="tiny muted">${subOf(s) ? `מנוי · ${esc((S.subPlans || []).find(p => p.id === subOf(s).plan_id)?.name || '')}` : card ? `${card.remaining} שיעורים · עד ${fmtDate(card.expiresAt)}` : 'אין מנוי או כרטיסייה'}</p></div>
         <span class="muted">‹</span></button>`; }).join('') || `<p class="muted small" style="padding:12px 0">${loading ? 'טוען…' : 'לא נמצאו לקוחות'}</p>`}
     </div>`;
 }
@@ -378,8 +384,6 @@ function shStudent({ id }) {
     <p class="tiny muted" style="margin-top:-4px">הסכום ייכנס להכנסות החודש ולקובץ האקסל.</p>
     <button class="btn block soft" data-act="adGrant" data-id="${s.id}">הוספה</button>
 
-    <button class="btn block soft" data-act="adArchive" data-id="${s.id}">${s.archived ? '↩︎ החזרה ללקוחות פעילות' : 'העברה ללקוחות לא פעילות'}</button>
-    <p class="tiny muted center" style="margin-top:-6px">${s.archived ? 'היא ברשימת "לא פעילות".' : 'רק לסדר הרשימה. לא חוסם כלום.'} אם תקנה או תירשם לשיעור, תחזור לבד ל"פעילות".</p>
     <button class="btn block ghost" data-act="adBlock" data-id="${s.id}" style="color:var(--rose-deep)">${s.blocked ? 'ביטול החסימה' : 'חסימה (לא תוכל להירשם לשיעורים)'}</button>
   </div>`;
 }

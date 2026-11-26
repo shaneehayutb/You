@@ -418,7 +418,7 @@ const API = {
       call(sb.from('profiles').select('*').eq('is_admin', false).not('id', 'in', `(${HIDDEN_CLIENTS.join(',')})`)),
       call(sb.from('purchases').select('*')),
       call(sb.from('health_declarations').select('user_id,dance,details,needs_cert,cert_path,valid_until,signed_at').order('signed_at', { ascending: false })),
-      call(sb.from('bookings').select('user_id,status,created_at,classes(starts_at)').in('status', ['attended', 'booked'])),
+      call(sb.from('bookings').select('user_id,status,created_at,classes(starts_at)').in('status', ['attended', 'booked', 'no_show'])),
       call(sb.from('products').select('id,name')),
       call(sb.from('classes').select('starts_at,duration_min,cancelled_at').gte('starts_at', yearAgo)),
       call(sb.from('payment_orders').select('purchase_id,tx_number,paid_at').eq('status', 'paid')),
@@ -430,11 +430,14 @@ const API = {
       refunded: +p.refunded_ils || 0, refundedAt: ts(p.refunded_at), takbull: !!p.takbull_ref && !/^(MANUAL|TEST)-/.test(p.takbull_ref), tx: txOf[p.id] || '' }));
     const students = profs.map(p => {
       const h = hs.find(x => x.user_id === p.id);
-      const mine = books.filter(b => b.user_id === p.id && b.classes && ts(b.classes.starts_at) < Date.now());
+      const past = books.filter(b => b.user_id === p.id && b.classes && ts(b.classes.starts_at) < Date.now());
+      const mine = past.filter(b => b.status !== 'no_show');
+      const lastPast = past.sort((x, y) => ts(y.classes.starts_at) - ts(x.classes.starts_at))[0];
       return {
         id: p.id, name: p.full_name || (p.phone ? 'בלי שם · ' + p.phone : p.email ? 'בלי שם · ' + p.email : 'בלי שם'), phone: p.phone || '', email: p.email || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, archived: !!p.archived, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
         attended: mine.filter(b => b.status === 'attended').length || mine.length,
         lastAt: Math.max(0, ...mine.map(b => ts(b.classes.starts_at))) || null,
+        noShowAt: lastPast?.status === 'no_show' ? ts(lastPast.classes.starts_at) : null,   // השיעור האחרון שלה — שחר סימנה "לא הגיעה"
         health: h ? { dance: h.dance, details: h.details || '', needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
         purchases: purchases.filter(x => x.userId === p.id),
       };
