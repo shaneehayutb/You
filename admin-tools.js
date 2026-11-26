@@ -146,7 +146,7 @@ const isActiveClient = s => !!(subOf(s) || activeCard(s));
 function attention() {
   const out = [];
   for (const s of students()) {
-    if (s.blocked) continue;
+    if (s.blocked || s.archived) continue;
     const fn = firstName(s.name), why = [];
     let msg = '';
     if (!s.termsAt) { why.push('עוד לא אישרה תקנון'); msg ||= `היי ${fn} 🤍 כדי להשלים את ההרשמה צריך רק לאשר את התקנון באפליקציה`; }
@@ -169,15 +169,17 @@ function adminEnsureLoaded() {
 
 function vClients() {
   adminEnsureLoaded();
-  const list = students(), att = attention(), q = (ui.clientQ || '').trim();
+  // "הוסרו" — לקוחות ששחר הסירה מהרשימה (לא נמחקות; חוזרות לבד אם קונות או נרשמות)
+  const all = students(), removed = all.filter(s => s.archived), list = all.filter(s => !s.archived);
+  const att = attention(), q = (ui.clientQ || '').trim();
   const loading = LIVE && !S.adminData;
   const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
   const active = list.filter(s => !s.blocked && isActiveClient(s)).length;
   const fresh = list.filter(s => s.joinedAt >= m0.getTime()).length;
-  const tab = ui.clientTab === 'archived' ? 'archived' : 'active';
+  const tab = ui.clientTab === 'inactive' || (ui.clientTab === 'removed' && removed.length) ? ui.clientTab : 'active';
   const nAct = list.filter(isActiveClient).length, nArch = list.length - nAct;
-  // פעילות = מנוי או כרטיסייה בתוקף. בחיפוש — מחפשות בכל הלקוחות
-  const shown = list.filter(s => q ? true : tab === 'archived' ? !isActiveClient(s) : isActiveClient(s))
+  // פעילות = מנוי או כרטיסייה בתוקף. בחיפוש — מחפשות בכל הלקוחות (כולל שהוסרו)
+  const shown = (q ? all : tab === 'removed' ? removed : list.filter(s => tab === 'inactive' ? !isActiveClient(s) : isActiveClient(s)))
     .filter(s => !q || s.name.includes(q) || String(s.phone).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§'))
     .sort((a, b) => a.name.localeCompare(b.name, 'he'));
   return `${header('לקוחות')}
@@ -201,12 +203,13 @@ function vClients() {
     <div class="section-title"><h2>כל הלקוחות</h2></div>
     <div class="row" style="gap:8px;margin-bottom:10px">
       <button class="chip ${tab === 'active' ? 'on' : ''}" data-act="adClientTab" data-v="active" aria-pressed="${tab === 'active'}">פעילות (${nAct})</button>
-      <button class="chip ${tab === 'archived' ? 'on' : ''}" data-act="adClientTab" data-v="archived" aria-pressed="${tab === 'archived'}">לא פעילות (${nArch})</button>
+      <button class="chip ${tab === 'inactive' ? 'on' : ''}" data-act="adClientTab" data-v="inactive" aria-pressed="${tab === 'inactive'}">לא פעילות (${nArch})</button>
+      ${removed.length ? `<button class="chip ${tab === 'removed' ? 'on' : ''}" data-act="adClientTab" data-v="removed" aria-pressed="${tab === 'removed'}">הוסרו (${removed.length})</button>` : ''}
     </div>
     <input class="input" id="cl-q" data-search="clients" value="${esc(q)}" placeholder="חיפוש לפי שם או טלפון">
     <div class="card" style="padding:2px 14px;margin-top:12px">
       ${shown.map(s => { const card = activeCard(s); return `<button class="list-row plain" data-act="adStudent" data-id="${s.id}" style="width:100%">
-        <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}${q && !isActiveClient(s) ? ' <span class="tag">לא פעילה</span>' : ''}
+        <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}${q && s.archived ? ' <span class="tag">הוסרה</span>' : q && !isActiveClient(s) ? ' <span class="tag">לא פעילה</span>' : ''}
           <p class="tiny muted">${subOf(s) ? `מנוי · ${esc((S.subPlans || []).find(p => p.id === subOf(s).plan_id)?.name || '')}` : card ? `${card.remaining} שיעורים · עד ${fmtDate(card.expiresAt)}` : 'אין מנוי או כרטיסייה'}</p></div>
         <span class="muted">‹</span></button>`; }).join('') || `<p class="muted small" style="padding:12px 0">${loading ? 'טוען…' : 'לא נמצאו לקוחות'}</p>`}
     </div>`;
@@ -384,6 +387,8 @@ function shStudent({ id }) {
     <p class="tiny muted" style="margin-top:-4px">הסכום ייכנס להכנסות החודש ולקובץ האקסל.</p>
     <button class="btn block soft" data-act="adGrant" data-id="${s.id}">הוספה</button>
 
+    <button class="btn block soft" data-act="adArchive" data-id="${s.id}">${s.archived ? '↩︎ החזרה לרשימת הלקוחות' : 'הסרה מהרשימה'}</button>
+    <p class="tiny muted center" style="margin-top:-6px">${s.archived ? 'היא ברשימת "הוסרו".' : 'היא לא נמחקת, רק עוברת ל"הוסרו". כל הפרטים שלה נשמרים.'} אם תקנה או תירשם לשיעור, תחזור לבד.</p>
     <button class="btn block ghost" data-act="adBlock" data-id="${s.id}" style="color:var(--rose-deep)">${s.blocked ? 'ביטול החסימה' : 'חסימה (לא תוכל להירשם לשיעורים)'}</button>
   </div>`;
 }
@@ -983,9 +988,11 @@ document.addEventListener('click', e => {
     case 'adArchive': {
       const s = students().find(x => x.id === id); if (!s) return;
       const to = !s.archived;
-      if (LIVE) return afterLive(() => API.setArchived(id, to), to ? 'הועברה ל"לא פעילות"' : 'חזרה ל"פעילות" 🤍');
-      s.archived = to; save(); renderSheet(); render();
-      return toast(to ? 'הועברה ל"לא פעילות"' : 'חזרה ל"פעילות" 🤍');
+      if (to && !confirm(`להסיר את ${s.name} מהרשימה? היא לא נמחקת, ואפשר להחזיר אותה בכל רגע.`)) return;
+      const done = () => { closeSheet(); render(); };
+      if (LIVE) return afterLive(() => API.setArchived(id, to), to ? 'הוסרה מהרשימה' : 'חזרה לרשימה 🤍').then(done);
+      s.archived = to; save(); done();
+      return toast(to ? 'הוסרה מהרשימה' : 'חזרה לרשימה 🤍');
     }
     case 'adBlock': {
       const s = students().find(x => x.id === id);
