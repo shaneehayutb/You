@@ -141,12 +141,14 @@ function attention() {
   const out = [];
   for (const s of students()) {
     if (s.blocked || s.archived) continue;
+    // מנויה פעילה לא צריכה "כרטיסייה" — לא מציקים לה על זה
+    const subbed = (S.adminData?.subs || []).some(x => x.user_id === s.id && ['active', 'cancelled', 'failed'].includes(x.status) && (!x.ends_at || Date.parse(x.ends_at) > now()));
     const card = activeCard(s);
     const fn = firstName(s.name);
     if (s.health?.needsCert && !s.health.cert) out.push({ s, why: 'חסר אישור רפואי', msg: `היי ${fn} 🤍 רק תזכורת להעלות לאפליקציה אישור רפואי לפני השיעור הבא` });
     else if (card && card.credits > 1 && card.remaining <= 1) out.push({ s, why: card.remaining ? 'נשאר שיעור אחד בכרטיסייה' : 'הכרטיסייה נגמרה', msg: `היי ${fn} 🤍 ראיתי שהכרטיסייה שלך כמעט נגמרה. אפשר לחדש באפליקציה מתי שנוח לך` });
     else if (card && card.expiresAt - now() < 10 * DAY) out.push({ s, why: `הכרטיסייה פגה ב-${fmtDate(card.expiresAt)} (נשארו ${card.remaining})`, msg: `היי ${fn} 🤍 הכרטיסייה שלך בתוקף עד ${fmtDate(card.expiresAt)}, ונשארו בה ${card.remaining} שיעורים. מחכה לך בשיעור!` });
-    else if (!card && s.lastAt > now() - 45 * DAY) out.push({ s, why: 'אין כרטיסייה פעילה', msg: `היי ${fn} 🤍 מתגעגעת! מתי חוזרת לרקוד?` });
+    else if (!card && !subbed && s.lastAt > now() - 45 * DAY) out.push({ s, why: 'אין כרטיסייה פעילה', msg: `היי ${fn} 🤍 מתגעגעת! מתי חוזרת לרקוד?` });
   }
   return out;
 }
