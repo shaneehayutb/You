@@ -385,7 +385,7 @@ const API = {
     const ids = rows.map(r => r.user_id);
     const [profs, hs, cl, prev] = await Promise.all([
       call(sb.from('profiles').select('id,full_name,phone,photo_consent').in('id', ids)),
-      call(sb.from('health_declarations').select('user_id,dance,needs_cert,cert_path,valid_until,signed_at').in('user_id', ids).order('signed_at', { ascending: false })),
+      call(sb.from('health_declarations').select('user_id,dance,details,needs_cert,cert_path,valid_until,signed_at').in('user_id', ids).order('signed_at', { ascending: false })),
       call(sb.from('classes').select('starts_at').eq('id', classId).single()),
       call(sb.from('bookings').select('user_id,classes(starts_at)').in('user_id', ids).in('status', ['booked', 'attended', 'no_show', 'late_cancel'])),
     ]);
@@ -394,7 +394,7 @@ const API = {
     const hadBefore = new Set(prev.filter(b => b.classes && Date.parse(b.classes.starts_at) < t0).map(b => b.user_id));
     return rows.map(r => {
       const p = profs.find(x => x.id === r.user_id), h = hs.find(x => x.user_id === r.user_id);
-      return { ...r, first: !hadBefore.has(r.user_id), name: p?.full_name || '—', phone: p?.phone, photo: p?.photo_consent || null, health: h ? { dance: h.dance, needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: Date.parse(h.valid_until) } : null };
+      return { ...r, first: !hadBefore.has(r.user_id), name: p?.full_name || '—', phone: p?.phone, photo: p?.photo_consent || null, health: h ? { dance: h.dance, details: h.details || '', needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: Date.parse(h.valid_until) } : null };
     });
   },
 
@@ -406,7 +406,7 @@ const API = {
     const [profs, purch, hs, books, prods, cls, orders] = await Promise.all([
       call(sb.from('profiles').select('*').eq('is_admin', false).not('id', 'in', `(${HIDDEN_CLIENTS.join(',')})`)),
       call(sb.from('purchases').select('*')),
-      call(sb.from('health_declarations').select('user_id,dance,needs_cert,cert_path,valid_until,signed_at').order('signed_at', { ascending: false })),
+      call(sb.from('health_declarations').select('user_id,dance,details,needs_cert,cert_path,valid_until,signed_at').order('signed_at', { ascending: false })),
       call(sb.from('bookings').select('user_id,status,created_at,classes(starts_at)').in('status', ['attended', 'booked'])),
       call(sb.from('products').select('id,name')),
       call(sb.from('classes').select('starts_at,duration_min,cancelled_at').gte('starts_at', yearAgo)),
@@ -424,7 +424,7 @@ const API = {
         id: p.id, name: p.full_name || (p.phone ? 'בלי שם · ' + p.phone : p.email ? 'בלי שם · ' + p.email : 'בלי שם'), phone: p.phone || '', email: p.email || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
         attended: mine.filter(b => b.status === 'attended').length || mine.length,
         lastAt: Math.max(0, ...mine.map(b => ts(b.classes.starts_at))) || null,
-        health: h ? { dance: h.dance, needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
+        health: h ? { dance: h.dance, details: h.details || '', needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
         purchases: purchases.filter(x => x.userId === p.id),
       };
     });

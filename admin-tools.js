@@ -16,7 +16,9 @@ const HEALTH_LABELS = { joints: 'מפרקים', surgery: 'ניתוח', pregnant:
 /** צילום: מסמנים רק מי שלא מצטלמת או רק בלי פנים (ומי שעוד לא בחרה) */
 const photoBadge = p => p === 'no' ? '<span class="tag warn">🚫 לא מצטלמת</span>' : !p ? '<span class="tag">📷 עוד לא בחרה</span>' : '';
 const healthBadges = h => !h ? '<span class="tag warn">אין הצהרה</span>'
-  : [...Object.keys(HEALTH_LABELS).filter(k => h.dance?.[k]).map(k => `<span class="tag rose">${HEALTH_LABELS[k]}</span>`),
+  // מה שהלקוחה כתבה בעצמה מוצג במקום התגית הכללית (מפרקים / ניתוח / הריון)
+  : [...(String(h.details || '').trim() ? [`<span class="tag rose">📝 ${esc(String(h.details).trim().slice(0, 80))}${String(h.details).trim().length > 80 ? '…' : ''}</span>`]
+       : Object.keys(HEALTH_LABELS).filter(k => h.dance?.[k]).map(k => `<span class="tag rose">${HEALTH_LABELS[k]}</span>`)),
      h.needsCert && !h.cert ? '<span class="tag warn">חסר אישור רפואי</span>' : ''].join(' ');
 
 /* ---------- נתוני תלמידות לדוגמה (רק בהדגמה) ---------- */
