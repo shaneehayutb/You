@@ -140,7 +140,7 @@ const activeCard = s => s.purchases.filter(p => p.remaining > 0 && p.expiresAt >
 function attention() {
   const out = [];
   for (const s of students()) {
-    if (s.blocked) continue;
+    if (s.blocked || s.archived) continue;
     const card = activeCard(s);
     const fn = firstName(s.name);
     if (s.health?.needsCert && !s.health.cert) out.push({ s, why: 'חסר אישור רפואי', msg: `היי ${fn} 🤍 רק תזכורת להעלות לאפליקציה אישור רפואי לפני השיעור הבא` });
@@ -166,7 +166,11 @@ function vClients() {
   const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
   const active = list.filter(s => !s.blocked && activeCard(s)).length;
   const fresh = list.filter(s => s.joinedAt >= m0.getTime()).length;
-  const shown = list.filter(s => !q || s.name.includes(q) || String(s.phone).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§'))
+  const tab = ui.clientTab === 'archived' ? 'archived' : 'active';
+  const nArch = list.filter(s => s.archived).length, nAct = list.length - nArch;
+  // בחיפוש — מחפשות בכל הלקוחות; בלי חיפוש — רק ברשימה שנבחרה
+  const shown = list.filter(s => q ? true : tab === 'archived' ? s.archived : !s.archived)
+    .filter(s => !q || s.name.includes(q) || String(s.phone).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§'))
     .sort((a, b) => a.name.localeCompare(b.name, 'he'));
   return `${header('לקוחות')}
     <div class="stats">
@@ -187,10 +191,14 @@ function vClients() {
       : `<div class="card muted center small">${loading ? 'טוען…' : 'הכול בסדר, אין מה לטפל בו כרגע 🤍'}</div>`}
 
     <div class="section-title"><h2>כל הלקוחות</h2></div>
+    <div class="row" style="gap:8px;margin-bottom:10px">
+      <button class="chip ${tab === 'active' ? 'on' : ''}" data-act="adClientTab" data-v="active" aria-pressed="${tab === 'active'}">פעילות (${nAct})</button>
+      <button class="chip ${tab === 'archived' ? 'on' : ''}" data-act="adClientTab" data-v="archived" aria-pressed="${tab === 'archived'}">לא פעילות (${nArch})</button>
+    </div>
     <input class="input" id="cl-q" data-search="clients" value="${esc(q)}" placeholder="חיפוש לפי שם או טלפון">
     <div class="card" style="padding:2px 14px;margin-top:12px">
       ${shown.map(s => { const card = activeCard(s); return `<button class="list-row plain" data-act="adStudent" data-id="${s.id}" style="width:100%">
-        <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}
+        <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}${q && s.archived ? ' <span class="tag">לא פעילה</span>' : ''}
           <p class="tiny muted">${card ? `${card.remaining} שיעורים · עד ${fmtDate(card.expiresAt)}` : 'אין כרטיסייה פעילה'}</p></div>
         <span class="muted">‹</span></button>`; }).join('') || `<p class="muted small" style="padding:12px 0">${loading ? 'טוען…' : 'לא נמצאו לקוחות'}</p>`}
     </div>`;
@@ -368,6 +376,8 @@ function shStudent({ id }) {
     <p class="tiny muted" style="margin-top:-4px">הסכום ייכנס להכנסות החודש ולקובץ האקסל.</p>
     <button class="btn block soft" data-act="adGrant" data-id="${s.id}">הוספה</button>
 
+    <button class="btn block soft" data-act="adArchive" data-id="${s.id}">${s.archived ? '↩︎ החזרה ללקוחות פעילות' : 'העברה ללקוחות לא פעילות'}</button>
+    <p class="tiny muted center" style="margin-top:-6px">${s.archived ? 'היא ברשימת "לא פעילות".' : 'רק לסדר הרשימה. לא חוסם כלום.'} אם תקנה או תירשם לשיעור, תחזור לבד ל"פעילות".</p>
     <button class="btn block ghost" data-act="adBlock" data-id="${s.id}" style="color:var(--rose-deep)">${s.blocked ? 'ביטול החסימה' : 'חסימה (לא תוכל להירשם לשיעורים)'}</button>
   </div>`;
 }
@@ -962,6 +972,14 @@ document.addEventListener('click', e => {
       p.expiresAt = Math.max(p.expiresAt, now()) + d * DAY;
       save(); renderSheet(); render();
       return toast(`התוקף הוארך עד ${fmtDate(p.expiresAt)}`);
+    }
+    case 'adClientTab': { ui.clientTab = el.dataset.v; return render(); }
+    case 'adArchive': {
+      const s = students().find(x => x.id === id); if (!s) return;
+      const to = !s.archived;
+      if (LIVE) return afterLive(() => API.setArchived(id, to), to ? 'הועברה ל"לא פעילות"' : 'חזרה ל"פעילות" 🤍');
+      s.archived = to; save(); renderSheet(); render();
+      return toast(to ? 'הועברה ל"לא פעילות"' : 'חזרה ל"פעילות" 🤍');
     }
     case 'adBlock': {
       const s = students().find(x => x.id === id);

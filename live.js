@@ -432,7 +432,7 @@ const API = {
       const h = hs.find(x => x.user_id === p.id);
       const mine = books.filter(b => b.user_id === p.id && b.classes && ts(b.classes.starts_at) < Date.now());
       return {
-        id: p.id, name: p.full_name || (p.phone ? 'בלי שם · ' + p.phone : p.email ? 'בלי שם · ' + p.email : 'בלי שם'), phone: p.phone || '', email: p.email || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
+        id: p.id, name: p.full_name || (p.phone ? 'בלי שם · ' + p.phone : p.email ? 'בלי שם · ' + p.email : 'בלי שם'), phone: p.phone || '', email: p.email || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, archived: !!p.archived, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
         attended: mine.filter(b => b.status === 'attended').length || mine.length,
         lastAt: Math.max(0, ...mine.map(b => ts(b.classes.starts_at))) || null,
         health: h ? { dance: h.dance, details: h.details || '', needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
@@ -464,6 +464,7 @@ const API = {
   },
   markRefunded(purchaseId, amount) { return call(sb.rpc('admin_mark_refunded', { p_purchase: purchaseId, p_amount: amount })); },
   extendPurchase(purchaseId, days) { return call(sb.rpc('admin_extend_purchase', { p_purchase: purchaseId, p_days: days })); },
+  setArchived(userId, archived) { return call(sb.rpc('admin_set_archived', { p_user: userId, p_archived: archived })); },
   setBlocked(userId, blocked) { return call(sb.rpc('admin_set_blocked', { p_user: userId, p_blocked: blocked })); },
   async saveSubPrices(list) {
     for (const p of list) {
