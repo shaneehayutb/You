@@ -140,7 +140,7 @@ const activeCard = s => s.purchases.filter(p => p.remaining > 0 && p.expiresAt >
 // מנויה: מנוי פעיל (או מבוטל שעוד לא הסתיים)
 const subOf = s => (S.adminData?.subs || []).find(x => x.user_id === s.id && ['active', 'cancelled', 'failed'].includes(x.status) && (!x.ends_at || Date.parse(x.ends_at) > now()) && (!x.started_at || Date.parse(x.started_at) <= now()));
 // לקוחה פעילה = יש לה מנוי או כרטיסייה בתוקף
-const isActiveClient = s => !!(subOf(s) || activeCard(s));
+const isActiveClient = s => !!(subOf(s) || activeCard(s) || (s.nextAt && isFinite(s.nextAt)));
 
 // "דורש תשומת לב": רק מה ששחר צריכה לטפל בו — הרשמה לא גמורה (תקנון / הצהרה / אישור רפואי), ומנויה שלא הגיעה
 function attention() {
@@ -210,7 +210,7 @@ function vClients() {
     <div class="card" style="padding:2px 14px;margin-top:12px">
       ${shown.map(s => { const card = activeCard(s); return `<button class="list-row plain" data-act="adStudent" data-id="${s.id}" style="width:100%">
         <div class="grow"><b>${esc(s.name)}</b>${s.blocked ? ' <span class="tag warn">חסומה</span>' : ''}${q && s.archived ? ' <span class="tag">הוסרה</span>' : q && !isActiveClient(s) ? ' <span class="tag">לא פעילה</span>' : ''}
-          <p class="tiny muted">${subOf(s) ? `מנוי · ${esc((S.subPlans || []).find(p => p.id === subOf(s).plan_id)?.name || '')}` : card ? `${card.remaining} שיעורים · עד ${fmtDate(card.expiresAt)}` : 'אין מנוי או כרטיסייה'}</p></div>
+          <p class="tiny muted">${subOf(s) ? `מנוי · ${esc((S.subPlans || []).find(p => p.id === subOf(s).plan_id)?.name || '')}` : card ? `${card.remaining} שיעורים · עד ${fmtDate(card.expiresAt)}` : s.nextAt && isFinite(s.nextAt) ? `רשומה לשיעור ב-${fmtDate(s.nextAt)}` : 'אין מנוי או כרטיסייה'}</p></div>
         <span class="muted">‹</span></button>`; }).join('') || `<p class="muted small" style="padding:12px 0">${loading ? 'טוען…' : 'לא נמצאו לקוחות'}</p>`}
     </div>`;
 }

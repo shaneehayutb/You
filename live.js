@@ -437,6 +437,8 @@ const API = {
         id: p.id, name: p.full_name || (p.phone ? 'בלי שם · ' + p.phone : p.email && !/privaterelay\.appleid\.com$/i.test(p.email) ? 'בלי שם · ' + p.email : 'בלי שם · נרשמה עם Apple'), phone: p.phone || '', email: p.email || '', photo: p.photo_consent || null, termsAt: p.terms_accepted_at ? Date.parse(p.terms_accepted_at) : null, archived: !!p.archived, age: p.age, heard: p.heard, joinedAt: ts(p.created_at), blocked: !!p.blocked,
         attended: mine.filter(b => b.status === 'attended').length || mine.length,
         lastAt: Math.max(0, ...mine.map(b => ts(b.classes.starts_at))) || null,
+        // שיעור קרוב שהיא רשומה אליו (כדי שתופיע ב"פעילות" גם בלי כרטיסייה בתוקף)
+        nextAt: Math.min(Infinity, ...books.filter(b => b.user_id === p.id && b.status === 'booked' && b.classes && ts(b.classes.starts_at) > Date.now()).map(b => ts(b.classes.starts_at))) || null,
         noShowAt: lastPast?.status === 'no_show' ? ts(lastPast.classes.starts_at) : null,   // השיעור האחרון שלה — שחר סימנה "לא הגיעה"
         health: h ? { dance: h.dance, details: h.details || '', needsCert: h.needs_cert, cert: h.cert_path ? {} : null, validUntil: ts(h.valid_until) } : null,
         purchases: purchases.filter(x => x.userId === p.id),
