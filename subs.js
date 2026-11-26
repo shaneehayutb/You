@@ -401,9 +401,13 @@
       </div>
       ${week ? `<div class="card" style="padding:4px 18px">${week}</div>` : ''}`;
   }
-  function adminSubsList() {
+  let subsListOpen = false;   // במסך הלקוחות: רשימת המנויות סגורה עד שלוחצים
+  function adminSubsList(collapsible) {
     const list = adminSubs();
-    return `<div class="section-title"><h2>מנויות</h2></div>
+    if (collapsible && !subsListOpen) return `<button class="list-row plain card" style="width:100%;text-align:right;margin-top:18px;padding:14px 18px" data-act="sbSubsToggle" aria-expanded="false">
+        <span class="grow"><b>מנויות (${list.length})</b></span><span class="muted">▾</span></button>`;
+    return `${collapsible ? `<button class="list-row plain" style="width:100%;text-align:right;margin-top:18px" data-act="sbSubsToggle" aria-expanded="true"><span class="grow"><h2 style="margin:0">מנויות (${list.length})</h2></span><span class="muted">▴</span></button>`
+        : '<div class="section-title"><h2>מנויות</h2></div>'}
       <div class="card" style="padding:4px 18px">${list.map((s, i) => { const p = plan(s.plan), np = s.pending && plan(s.pending.plan); return `
         <button class="list-row plain" style="width:100%;text-align:right" data-act="sbAdminEdit" data-i="${i}">
           <span class="grow"><b>${esc(s.name)}</b><span class="tiny muted" style="display:block">${esc(p.name)} · ${s.slots.map(k => `${dayOf(k)} ${slotTime(k)}`).join(', ')}</span>
@@ -415,7 +419,7 @@
   const origAdmin = vAdmin;
   vAdmin = function () { const h = origAdmin(); if (!on()) return h; const i = h.indexOf('<div class="section-title">'); return i < 0 ? h + adminSubsBlock() : h.slice(0, i) + adminSubsBlock() + h.slice(i); };
   const origClients = vClients;
-  vClients = function () { const h = origClients(); if (!on()) return h; const i = h.indexOf('<div class="section-title"><h2>כל הלקוחות'); const blk = adminSubsList(); return i < 0 ? h + blk : h.slice(0, i) + blk + h.slice(i); };
+  vClients = function () { const h = origClients(); if (!on()) return h; const i = h.indexOf('<div class="section-title"><h2>כל הלקוחות'); const blk = adminSubsList(true); return i < 0 ? h + blk : h.slice(0, i) + blk + h.slice(i); };
   function shSubAdminList() { return `<div class="stack"><h1>מנויות</h1>${adminSubsList()}</div>`; }
   function shSubAdminEdit({ i }) {
     const s = adminSubs()[i], p = plan(s.plan);
@@ -520,6 +524,7 @@
         return act(() => API.subUnskip(id), () => { b.status = 'booked'; }, 'מעולה, את בפנים 🤍').then(ok => ok && openSheet({ type: 'sbManage' })); }
       case 'sbClose': closeSheet(); return render();
       case 'sbSlotToggle': { const k = ds.k; openSlots.has(k) ? openSlots.delete(k) : openSlots.add(k); return render(); }
+      case 'sbSubsToggle': subsListOpen = !subsListOpen; return render();
       case 'sbAdminList': return openSheet({ type: 'sbAdminList' });
       case 'sbAdminEdit': return openSheet({ type: 'sbAdminEdit', i: +ds.i });
       case 'sbAdminCancel': {

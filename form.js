@@ -68,7 +68,7 @@ function render() {
     </div>
 
     <p class="f-step">1 · נעים להכיר</p>
-    <label class="field"><span>שם מלא</span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name"></label>
+    <label class="field"><span>שם מלא <small class="muted">(בעברית)</small></span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name"></label>
     <label class="field"><span>גיל</span><input class="input" id="f-age" type="number" inputmode="numeric" min="14" max="99" value="${esc(f.age)}"></label>
     <label class="field"><span>טלפון</span><input class="input" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" value="${esc(f.phone)}"></label>
     <label class="field"><span>אימייל <small class="muted">(לקבלות ולכניסה לאפליקציה)</small></span><input class="input" id="f-email" type="email" autocomplete="email" dir="ltr" style="text-align:right" value="${esc(f.email)}"></label>
@@ -180,6 +180,7 @@ function mark(el) { if (!el) return; el.classList.add('f-err'); el.scrollIntoVie
 async function send() {
   keepInputs();
   if ((f.name || '').trim().length < 2) { mark(document.getElementById('f-name')); return toast('איך קוראים לך?'); }
+  if (!(/^[\u05D0-\u05EA\s'"׳״\-]+$/.test(f.name.trim()) && (f.name.match(/[\u05D0-\u05EA]/g) || []).length >= 2)) { mark(document.getElementById('f-name')); return toast('נא לכתוב את השם בעברית 🙂'); }
   const age = +f.age;
   if (!(age >= 10 && age <= 99)) { mark(document.getElementById('f-age')); return toast('בת כמה את?'); }
   if ((f.phone || '').replace(/\D/g, '').length < 9) { mark(document.getElementById('f-phone')); return toast('מה מספר הטלפון?'); }

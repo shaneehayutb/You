@@ -237,6 +237,8 @@ const trialUsed = id => S.purchases.some(p => p.productId === id);
 const product = id => CONFIG.products.find(p => p.id === id);
 // תקנון חדש שפורסם אחרי שהלקוחה אישרה — צריך לאשר שוב (שחר לא)
 const termsOutdated = () => !!(S.user?.termsAt && S.termsVersion && S.user.termsAt < S.termsVersion && !S.isAdmin);
+// שם בעברית בלבד: אותיות עבריות (לפחות 2), רווחים, מקף וגרש
+const isHebrewName = n => { const t = String(n || '').trim(); return /^[\u05D0-\u05EA\s'"׳״\-]+$/.test(t) && (t.match(/[\u05D0-\u05EA]/g) || []).length >= 2; };
 // מייל מוסתר של אפל ("Hide My Email"): קבלות מתקבול לא מגיעות אליו
 const isRelayEmail = e => /privaterelay\.appleid\.com$/i.test(String(e || '').trim());
 const isOnboarded = () => S.user && S.user.health && S.user.termsAt && !termsOutdated();
@@ -595,7 +597,7 @@ function routeAfterSync() {
   S.guest = false;
   // שחר (מנהלת) לא עוברת את תהליך ההרשמה של הלקוחות — ישר למסך הניהול
   if (S.isAdmin) { S.admin = true; return go({ screen: null, tab: 'admin' }); }
-  if (u.age == null) { ui.form = { ...ui.form, auth: u.auth, name: ui.form.name || u.name, nameFromApple: !!(u.auth === 'apple' && (ui.form.name || u.name || '').trim().length >= 2), email: u.email || ui.form.email }; return go({ screen: 'meet' }); }
+  if (u.age == null) { ui.form = { ...ui.form, auth: u.auth, name: ui.form.name || u.name, nameFromApple: !!(u.auth === 'apple' && isHebrewName(ui.form.name || u.name)), email: u.email || ui.form.email }; return go({ screen: 'meet' }); }
   if (!u.health) return go({ screen: 'health' });
   if (!u.termsAt || termsOutdated()) return go({ screen: 'terms' });
   go({ screen: null, tab: S.admin ? 'admin' : 'home' });
@@ -645,7 +647,7 @@ function vMeet() {
   <div class="stack fade-in">
     <h1>נעים להכיר 🤍</h1>
     <p class="muted">כמה דברים קטנים, כדי ששחר תדע מי מגיעה.</p>
-    ${f.auth === 'apple' && f.nameFromApple ? '' : `<label class="field"><span>איך קוראים לך?</span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name" placeholder="שם מלא"></label>`}
+    ${f.auth === 'apple' && f.nameFromApple ? '' : `<label class="field"><span>איך קוראים לך? <small class="muted">(שם מלא בעברית)</small></span><input class="input" id="f-name" value="${esc(f.name)}" autocomplete="name" placeholder="שם מלא"></label>`}
     <label class="field"><span>בת כמה את? <small class="muted">(נדרש להצהרת הבריאות)</small></span><input class="input" id="f-age" type="number" inputmode="numeric" min="14" max="99" value="${esc(f.age)}"></label>
     <button class="btn block" data-act="meet">המשך</button>
   </div>`;
@@ -1441,7 +1443,7 @@ document.addEventListener('click', e => {
     case 'editProfile': return openSheet({ type: 'editProfile' });
     case 'saveProfile': {
       const name = val('ep-name'), phone = val('ep-phone'), email = val('ep-email') || (isRelayEmail(S.user.email) ? S.user.email : '');
-      if (name.length < 2) return toast('חסר שם');
+      if (!isHebrewName(name)) return toast('נא לכתוב שם מלא בעברית');
       if (phone && !validPhone(phone)) return toast('נראה שחסר משהו במספר הטלפון');
       if (email && !validEmail(email)) return toast('כתובת האימייל לא נראית תקינה');
       if (LIVE) return liveDo(() => API.saveProfile({ full_name: name, phone: phone || null, email: email || null }), 'הפרטים עודכנו ✨');
@@ -1487,7 +1489,7 @@ document.addEventListener('click', e => {
       const apple = ui.form.auth === 'apple' && !!ui.form.nameFromApple;   // באפל בדפדפן השם לא תמיד מגיע — אז שואלים
       const name = apple ? (ui.form.name || '') : val('f-name'), age = val('f-age');
       Object.assign(ui.form, { name, age });
-      if (!apple && name.length < 2) return toast('איך קוראים לך?');
+      if (!apple && !isHebrewName(name)) return toast(name.length < 2 ? 'איך קוראים לך?' : 'נא לכתוב את השם בעברית 🙂');
       if (!(+age >= 14 && +age <= 99)) return toast('בת כמה את? 🙂');
       return go({ screen: 'about' });
     }
