@@ -700,8 +700,11 @@ function shClientFile({ id }) {
     <h3>היסטוריית שיעורים</h3>
     <div class="card" style="padding:2px 14px;margin:0">${past.map(b => row(b, Date.parse(b.classes.starts_at) > now() && b.status !== 'booked' ? esc(BST[b.status] || b.status) : b.classes.cancelled_at ? 'השיעור בוטל' : esc(BST[b.status] || b.status))).join('') || '<p class="small muted" style="padding:10px 0">עוד אין שיעורים</p>'}</div>`;
   const yn = v => v === true ? '<b style="color:var(--rose-deep)">כן</b>' : v === false ? 'לא' : (typeof v === 'string' && v.trim()) ? `<b>${esc(v)}</b>` : '—';
-  const health = hs.map((h, i) => `<div class="card" style="margin:0">
-      <div class="row between"><b>${i === 0 ? 'הצהרת בריאות' : 'הצהרה קודמת'}</b>${new Date(h.valid_until) > new Date() && i === 0 ? '<span class="tag green">בתוקף</span>' : '<span class="tag">לא בתוקף</span>'}</div>
+  // הצהרות כפולות (נשלחו כמה פעמים באותה דקה עם אותן תשובות) מוצגות פעם אחת
+  const hkey = h => [String(h.signed_at).slice(0, 16), JSON.stringify(h.answers), JSON.stringify(h.dance), h.details || '', h.signature].join('|');
+  const hsU = hs.filter((h, i) => hs.findIndex(x => hkey(x) === hkey(h)) === i);
+  const health = hsU.map((h, i) => `<div class="card" style="margin:0">
+      <div class="row between"><b>${i === 0 ? 'הצהרת בריאות' : 'הצהרה קודמת'}</b>${i === 0 && new Date(h.valid_until) > new Date() ? '<span class="tag green">בתוקף</span>' : i === 0 ? '<span class="tag">לא בתוקף</span>' : '<span class="tag">הוחלפה בחדשה</span>'}</div>
       <p class="small" style="margin-top:6px">✍️ חתמה: <b>${esc(h.signature)}</b></p>
       <p class="tiny muted">נחתמה ב-${fdt(h.signed_at)} · בתוקף עד ${fmtDate(new Date(h.valid_until))}.${String(new Date(h.valid_until).getFullYear()).slice(2)}</p>
       ${i === 0 && prof?.parent_name ? `<p class="small">הסכמת הורה: <b>${esc(prof.parent_name)}</b></p>` : ''}
