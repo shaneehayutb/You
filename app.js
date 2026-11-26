@@ -722,8 +722,8 @@ function vHealth() {
       <label class="upload" style="margin-top:0">${ICON.lock}<span>${f.cert ? `✓ ${esc(f.cert.name)}` : 'העלאת אישור רפואי'}</span><small>תמונה או PDF · אפשר גם אחר כך</small>
         <input type="file" accept="image/*,application/pdf" hidden data-cert="form"></label>` : ''}
 
-    <h2 style="margin-top:22px">כדי ששחר תתאים לך את התנועה</h2>
-    <label class="field"><span>יש כאב, פציעה, ניתוח, הריון או כל דבר אחר ששחר כדאי שתדע? (לא חובה)</span><textarea class="input" id="f-details">${esc(f.details)}</textarea></label>
+    <h2 style="margin-top:22px">עוד משהו?</h2>
+    <label class="field"><span>יש משהו בגוף שלך שחשוב שאדע? (לא חובה)</span><textarea class="input" id="f-details">${esc(f.details)}</textarea></label>
 
     ${minor ? `<div class="card stack"><h3>את מתחת לגיל 18</h3><p class="small muted">צריך גם הסכמה של אחד ההורים.</p>
       <label class="field"><span>שם ההורה</span><input class="input" id="f-parent" value="${esc(f.parent)}"></label>

@@ -712,8 +712,8 @@ function shClientFile({ id }) {
       ${i === 0 && prof?.parent_name ? `<p class="small">הסכמת הורה: <b>${esc(prof.parent_name)}</b></p>` : ''}
       <details style="margin-top:8px"><summary class="small">כל התשובות</summary>
         <div class="tiny" style="line-height:1.8;margin-top:6px">${CONFIG.healthQuestions.map((q, k) => `<div>${q.g ? esc(q.g) + ' ' : ''}${esc(q.q)} ${yn((h.answers || [])[k])}</div>`).join('')}
-        <p class="muted" style="margin-top:6px">להתאמת התנועה:</p>${CONFIG.danceQuestions.map(q => `<div>${esc(q.q)} ${yn((h.dance || {})[q.k])}</div>`).join('')}</div></details>
-      ${h.details ? `<p class="small" style="margin-top:6px">📝 ${esc(h.details)}</p>` : ''}
+        ${Object.keys(h.dance || {}).length ? `<p class="muted" style="margin-top:6px">התאמת תנועה (שאלות מהטופס הקודם):</p>${CONFIG.danceQuestions.map(q => `<div>${esc(q.q)} ${yn((h.dance || {})[q.k])}</div>`).join('')}` : ''}</div></details>
+      ${h.details ? `<p class="small" style="margin-top:6px"><span class="muted">מה שכתבה לך:</span> 📝 ${esc(h.details)}</p>` : ''}
       ${h.needs_cert ? (h.cert_path ? `<p class="small" style="margin-top:6px">✓ אישור רפואי הועלה ב-${fdt(h.cert_uploaded_at)} <button class="btn sm ghost" data-act="adCertView" data-v="${esc(h.cert_path)}">לצפייה</button></p>`
         : '<p class="small" style="margin-top:6px;color:var(--rose-deep)">צריך אישור רפואי, עוד לא הועלה</p>') : ''}
     </div>`).join('') || '<div class="card muted small" style="margin:0">עוד לא מילאה הצהרת בריאות</div>';
