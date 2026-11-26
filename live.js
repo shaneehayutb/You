@@ -358,7 +358,18 @@ const API = {
     const ph = digits(prof?.phone), em = String(prof?.email || '').toLowerCase();
     const forms = (ph || em) ? (await call(sb.from('intake_forms').select('*').order('created_at', { ascending: false }).limit(300)))
       .filter(f => (ph && digits(f.phone) === ph) || (em && String(f.email || '').toLowerCase() === em)) : [];
-    return { prof, hs, subs, forms, books: books.filter(b => b.classes).sort((x, y) => Date.parse(x.classes.starts_at) - Date.parse(y.classes.starts_at)) };
+    const docs = await this.clientDocs(userId).catch(() => []);
+    return { prof, hs, subs, forms, docs, books: books.filter(b => b.classes).sort((x, y) => Date.parse(x.classes.starts_at) - Date.parse(y.classes.starts_at)) };
+  },
+  // מסמכים רפואיים בתיקייה הפרטית של הלקוחה (שחר בלבד)
+  async clientDocs(userId) {
+    const { data, error } = await sb.storage.from('certs').list(userId, { sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) throw error;
+    return (data || []).filter(f => f.name && !f.name.startsWith('.')).map(f => ({ path: `${userId}/${f.name}`, at: f.created_at ? Date.parse(f.created_at) : null }));
+  },
+  async adminUploadDoc(userId, file) {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    await call(sb.storage.from('certs').upload(`${userId}/doc-${Date.now()}.${ext}`, file, { contentType: file.type || undefined }));
   },
   async certUrl(path) {
     const { data, error } = await sb.storage.from('certs').createSignedUrl(path, 600);

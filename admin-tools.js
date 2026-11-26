@@ -684,6 +684,19 @@ function shSales({ m: sel }) {
 
 
 /* ---------- תיק לקוחה: על מה חתמה ומתי ---------- */
+// העלאת מסמך לתיק לקוחה (שחר)
+document.addEventListener('change', async e => {
+  const inp = e.target.closest?.('input[data-admin-doc]'); if (!inp || !inp.files?.[0] || !LIVE) return;
+  const uid = inp.dataset.adminDoc, file = inp.files[0];
+  if (file.size > 15 * 1024 * 1024) return toast('הקובץ גדול מדי (עד 15MB)');
+  toast('מעלה…');
+  try {
+    await API.adminUploadDoc(uid, file);
+    (S.clientFile ||= {})[uid] = await API.clientFile(uid);
+    if (ui.sheet?.type === 'clientFile') renderSheet();
+    toast('המסמך נשמר בתיק ✓');
+  } catch (err) { toast(errHe(err)); }
+});
 const fdt = t => { const d = new Date(t); return `${fmtDate(d)}.${String(d.getFullYear()).slice(2)} · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`; };
 function shClientFile({ id }) {
   const s = students().find(x => x.id === id), f = S.clientFile?.[id];
@@ -726,6 +739,14 @@ function shClientFile({ id }) {
 ${lessons}
 
     <h3>בריאות</h3>${health}
+
+    <h3>מסמכים רפואיים</h3>
+    <div class="card" style="margin:0">
+      ${(f.docs || []).map((d, i) => `<div class="list-row"><span class="grow">📄 מסמך ${(f.docs.length - i)}<span class="tiny muted" style="display:block">${d.at ? 'הועלה ב-' + fdt(d.at) : ''}</span></span>
+        <button class="btn sm ghost" data-act="adCertView" data-v="${esc(d.path)}">לצפייה</button></div>`).join('') || '<p class="small muted">אין מסמכים</p>'}
+      <label class="btn block soft" style="margin-top:10px">+ העלאת מסמך (תמונה או PDF)<input type="file" accept="image/*,application/pdf" hidden data-admin-doc="${id}"></label>
+      <p class="tiny muted" style="margin-top:6px">נשמר בתיק הפרטי שלה. רק את רואה (והיא עצמה).</p>
+    </div>
 
     <h3>תקנון ומדיניות פרטיות</h3>
     <div class="card" style="margin:0">${tAt ? `<p class="small">✓ אישרה ב-<b>${fdt(tAt)}</b></p>
