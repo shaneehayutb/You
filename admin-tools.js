@@ -196,7 +196,7 @@ function vClients() {
     ${att.length ? `<div class="card" style="padding:4px 18px">${att.slice(0, 6).map(({ s, why, msg }) => `
       <div class="list-row">
         <button class="grow plain" data-act="adStudent" data-id="${s.id}"><b>${esc(s.name)}</b><p class="tiny muted">${esc(why)}</p></button>
-        <a class="btn sm ghost" href="${waLink(s.phone, msg)}" target="_blank" rel="noopener">וואטסאפ</a>
+        ${s.phone ? `<a class="btn sm ghost" href="${waLink(s.phone, msg)}" target="_blank" rel="noopener">וואטסאפ</a>` : ''}
       </div>`).join('')}</div>`
       : `<div class="card muted center small">${loading ? 'טוען…' : 'הכול בסדר, אין מה לטפל בו כרגע 🤍'}</div>`}
 
@@ -329,7 +329,7 @@ function shStudent({ id }) {
   return `<div class="stack">
     <div><h1>${esc(s.name)}</h1><p class="muted small">${s.age ? `בת ${s.age} · ` : ''}הצטרפה ב-${fmtDate(s.joinedAt)}${s.heard ? ` · הגיעה דרך ${esc(s.heard)}` : ''}</p></div>
     <div class="row" style="gap:8px">
-      <a class="btn sm" href="${waLink(s.phone)}" target="_blank" rel="noopener">וואטסאפ</a>
+      ${s.phone ? `<a class="btn sm" href="${waLink(s.phone)}" target="_blank" rel="noopener">וואטסאפ</a>` : '<span class="tiny muted">אין לה טלפון במערכת</span>'}
       <span class="small muted" dir="ltr">${esc(s.phone)}</span>
     </div>
     ${s.email && /privaterelay\.appleid\.com$/i.test(s.email) ? `<div class="note" style="margin-top:-6px">📧 המייל שלה מוסתר על ידי אפל, ולכן קבלות לא מגיעות אליה. כדאי לבקש ממנה לעדכן מייל בפרופיל באפליקציה.</div>` : ''}
